@@ -1,0 +1,46 @@
+import { Debug } from "./Debug";
+import { Time } from "./Time";
+import { Viewport } from "./Viewport";
+import { Scene } from "./Scene";
+import { View } from "./View";
+import { Renderer } from "./Renderer";
+
+export class World {
+  private static instance: World;
+  public domElement!: HTMLElement;
+  public debug!: Debug;
+  public time!: Time;
+  public viewport!: Viewport;
+  public scene!: Scene;
+  public view!: View;
+  public renderer!: Renderer;
+
+  constructor(domElement: HTMLElement) {
+    if (World.instance) return World.instance;
+    World.instance = this;
+
+    this.domElement = domElement;
+
+    this.debug = new Debug();
+    this.time = new Time();
+    this.viewport = new Viewport();
+    this.scene = new Scene();
+    this.view = new View();
+    this.renderer = new Renderer();
+  }
+
+  public static getInstance(): World {
+    if (!World.instance) {
+      throw new Error("World instance not initialized");
+    }
+    return World.instance;
+  }
+
+  public dispose() {
+    this.debug.dispose();
+    this.time.dispose();
+    this.scene.dispose();
+    this.view.dispose();
+    this.renderer.dispose();
+  }
+}
