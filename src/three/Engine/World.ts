@@ -39,6 +39,7 @@ export class World {
   public dispose() {
     this.debug.dispose();
     this.time.dispose();
+    this.viewport.dispose();
     this.scene.dispose();
     this.view.dispose();
     this.renderer.dispose();

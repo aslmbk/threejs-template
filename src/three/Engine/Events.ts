@@ -59,4 +59,8 @@ export class Events<
 
     return this;
   }
+
+  clear() {
+    this.callbacks = {};
+  }
 }

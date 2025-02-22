@@ -39,6 +39,10 @@ export class Renderer {
     this.renderer.render(this.world.scene.getScene(), this.world.view.camera);
   }
 
+  public getDomElement() {
+    return this.renderer.domElement;
+  }
+
   public dispose() {
     this.renderer.dispose();
   }

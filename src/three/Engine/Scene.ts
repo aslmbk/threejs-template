@@ -27,5 +27,6 @@ export class Scene {
         }
       }
     });
+    this._scene.clear();
   }
 }
