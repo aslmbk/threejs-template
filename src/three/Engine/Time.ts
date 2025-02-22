@@ -3,7 +3,6 @@ import { Timer } from "three/addons/misc/Timer.js";
 
 export class Time {
   private timer = new Timer();
-  private frameIndex = 0;
   public elapsed = 0;
   public delta = 0;
   public events = new Events<{
@@ -21,12 +20,10 @@ export class Time {
     this.delta = this.timer.getDelta();
     this.events.trigger("tick", { elapsed: this.elapsed, delta: this.delta });
 
-    this.frameIndex = requestAnimationFrame(() => this.tick());
+    requestAnimationFrame(() => this.tick());
   }
 
   public dispose() {
     this.timer.dispose();
-    this.events.clear();
-    cancelAnimationFrame(this.frameIndex);
   }
 }
