@@ -5,6 +5,11 @@ import { Scene } from "./Scene";
 import { View } from "./View";
 import { Renderer } from "./Renderer";
 
+export type WorldOptions = {
+  domElement: HTMLElement;
+  autoRender?: boolean;
+};
+
 export class World {
   private static instance: World;
   public domElement!: HTMLElement;
@@ -15,7 +20,7 @@ export class World {
   public view!: View;
   public renderer!: Renderer;
 
-  constructor(domElement: HTMLElement) {
+  constructor({ domElement, autoRender = true }: WorldOptions) {
     if (World.instance) return World.instance;
     World.instance = this;
 
@@ -26,7 +31,7 @@ export class World {
     this.viewport = new Viewport();
     this.scene = new Scene();
     this.view = new View();
-    this.renderer = new Renderer();
+    this.renderer = new Renderer(autoRender);
   }
 
   public static getInstance(): World {

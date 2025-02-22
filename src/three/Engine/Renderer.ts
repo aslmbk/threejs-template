@@ -4,14 +4,17 @@ import { World } from "./World";
 export class Renderer {
   private renderer: THREE.WebGLRenderer;
   private world: World;
+  private autoRender: boolean;
 
-  constructor() {
+  constructor(autoRender: boolean = true) {
     this.world = World.getInstance();
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
     });
 
     this.world.domElement.appendChild(this.renderer.domElement);
+
+    this.autoRender = autoRender;
 
     this.resize();
     this.render();
@@ -21,7 +24,9 @@ export class Renderer {
     this.world.time.events.on(
       "tick",
       () => {
-        this.render();
+        if (this.autoRender) {
+          this.render();
+        }
       },
       5
     );
@@ -35,12 +40,24 @@ export class Renderer {
     this.renderer.setPixelRatio(this.world.viewport.pixelRatio);
   }
 
-  private render() {
+  public render() {
     this.renderer.render(this.world.scene.getScene(), this.world.view.camera);
+  }
+
+  public stop() {
+    this.autoRender = false;
+  }
+
+  public start() {
+    this.autoRender = true;
   }
 
   public getDomElement() {
     return this.renderer.domElement;
+  }
+
+  public setClearColor(color: THREE.ColorRepresentation) {
+    this.renderer.setClearColor(color);
   }
 
   public dispose() {

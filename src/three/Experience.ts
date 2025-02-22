@@ -6,7 +6,7 @@ export class Experience {
   private cube: THREE.Mesh;
 
   constructor(domElement: HTMLElement) {
-    this.world = new World(domElement);
+    this.world = new World({ domElement });
 
     this.cube = new THREE.Mesh(
       new THREE.BoxGeometry(1, 1, 1),
