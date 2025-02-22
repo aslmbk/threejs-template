@@ -1,15 +1,15 @@
 import "./App.css";
-import { World } from "./three/World";
 import { useEffect, useRef } from "react";
+import { Experience } from "./three/Experience";
 
 export const App = () => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
-    const world = new World(containerRef.current);
+    const experience = new Experience(containerRef.current);
     return () => {
-      world.dispose();
+      experience.dispose();
     };
   }, []);
 

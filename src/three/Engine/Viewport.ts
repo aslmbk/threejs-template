@@ -7,7 +7,7 @@ export class Viewport {
   public height = 0;
   public ratio = 0;
   public pixelRatio = 0;
-  public events = new Events();
+  public events = new Events<{ trigger: "change"; args: [] }>();
 
   constructor() {
     this.world = World.getInstance();

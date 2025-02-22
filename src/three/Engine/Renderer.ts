@@ -18,9 +18,13 @@ export class Renderer {
     this.world.viewport.events.on("change", () => {
       this.resize();
     });
-    this.world.time.events.on("tick", () => {
-      this.render();
-    });
+    this.world.time.events.on(
+      "tick",
+      () => {
+        this.render();
+      },
+      5
+    );
   }
 
   private resize() {

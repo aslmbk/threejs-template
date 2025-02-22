@@ -1,13 +1,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-type CallbackFunction = (...args: any[]) => void;
-type CallbacksStore = {
-  [eventName: string]: Array<Array<CallbackFunction>>;
+type CallbackFunction<Args extends any[]> = (...args: Args) => void;
+type CallbacksStore<Args extends any[]> = {
+  [eventName: string]: Array<Array<CallbackFunction<Args>>>;
 };
 
-export class Events {
-  private callbacks: CallbacksStore = {};
+export class Events<
+  T extends { trigger: string; args: any[] },
+  O extends number = 1 | 2 | 3 | 4 | 5
+> {
+  private callbacks: CallbacksStore<T["args"]> = {};
 
-  on(eventName: string, callback: CallbackFunction, order: number = 1): this {
+  on(
+    eventName: T["trigger"],
+    callback: CallbackFunction<T["args"]>,
+    order: O = 1 as O
+  ): this {
     if (!Array.isArray(this.callbacks[eventName])) {
       this.callbacks[eventName] = [];
     }
@@ -20,9 +27,8 @@ export class Events {
     return this;
   }
 
-  off(eventName: string, callback?: CallbackFunction): this {
+  off(eventName: T["trigger"], callback?: CallbackFunction<T["args"]>): this {
     if (!this.callbacks[eventName]) return this;
-
     if (typeof callback === "function") {
       for (const orderGroup of this.callbacks[eventName]) {
         if (Array.isArray(orderGroup)) {
@@ -39,7 +45,7 @@ export class Events {
     return this;
   }
 
-  trigger(eventName: string, ...args: any[]): this {
+  trigger(eventName: T["trigger"], ...args: T["args"]): this {
     const callbacks = this.callbacks[eventName];
     if (!Array.isArray(callbacks)) return this;
 

@@ -1,7 +1,7 @@
 import { Pane } from "tweakpane";
 
 export class Debug {
-  private panel: Pane;
+  public panel: Pane;
 
   constructor() {
     const active = location.hash.indexOf("debug") !== -1;
