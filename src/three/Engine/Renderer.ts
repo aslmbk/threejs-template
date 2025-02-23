@@ -56,6 +56,10 @@ export class Renderer {
     return this.renderer.domElement;
   }
 
+  public getWebGLRenderer() {
+    return this.renderer;
+  }
+
   public setClearColor(color: THREE.ColorRepresentation) {
     this.renderer.setClearColor(color);
   }

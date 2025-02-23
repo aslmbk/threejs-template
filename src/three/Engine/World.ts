@@ -4,6 +4,7 @@ import { Viewport } from "./Viewport";
 import { Scene } from "./Scene";
 import { View } from "./View";
 import { Renderer } from "./Renderer";
+import { OrbitControls } from "./OrbitControls";
 
 export type WorldOptions = {
   domElement: HTMLElement;
@@ -19,6 +20,7 @@ export class World {
   public scene!: Scene;
   public view!: View;
   public renderer!: Renderer;
+  public controls!: OrbitControls;
 
   constructor({ domElement, autoRender = true }: WorldOptions) {
     if (World.instance) return World.instance;
@@ -32,6 +34,7 @@ export class World {
     this.scene = new Scene();
     this.view = new View();
     this.renderer = new Renderer(autoRender);
+    this.controls = new OrbitControls();
   }
 
   public static getInstance(): World {
