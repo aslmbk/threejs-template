@@ -4,7 +4,7 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { World } from "./Engine";
+import { Engine } from "./Engine";
 
 interface BloomParams {
   threshold?: number;
@@ -20,7 +20,7 @@ export class SelectiveBloom {
   public materials: { [uuid: string]: THREE.Material | THREE.Material[] };
 
   public params: BloomParams;
-  private world: World;
+  private engine: Engine;
 
   public renderScene: RenderPass;
   public bloomPass: UnrealBloomPass;
@@ -29,7 +29,7 @@ export class SelectiveBloom {
   public outputPass: OutputPass;
   public finalComposer: EffectComposer;
 
-  constructor(world: World, params: BloomParams = {}) {
+  constructor(engine: Engine, params: BloomParams = {}) {
     this.params = {
       threshold: 0,
       strength: 1,
@@ -38,7 +38,7 @@ export class SelectiveBloom {
       ...params,
     };
 
-    this.world = world;
+    this.engine = engine;
 
     this.BLOOM_SCENE = 1;
     this.bloomLayer = new THREE.Layers();
@@ -47,10 +47,7 @@ export class SelectiveBloom {
     this.darkMaterial = new THREE.MeshBasicMaterial({ color: "black" });
     this.materials = {};
 
-    this.renderScene = new RenderPass(
-      this.world.scene.getScene(),
-      this.world.view.camera
-    );
+    this.renderScene = new RenderPass(this.engine.scene, this.engine.view);
 
     this.bloomPass = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
@@ -59,9 +56,7 @@ export class SelectiveBloom {
       this.params.threshold!
     );
 
-    this.bloomComposer = new EffectComposer(
-      this.world.renderer.getWebGLRenderer()
-    );
+    this.bloomComposer = new EffectComposer(this.engine.renderer);
     this.bloomComposer.renderToScreen = false;
     this.bloomComposer.addPass(this.renderScene);
     this.bloomComposer.addPass(this.bloomPass);
@@ -81,14 +76,12 @@ export class SelectiveBloom {
 
     this.outputPass = new OutputPass();
 
-    this.finalComposer = new EffectComposer(
-      this.world.renderer.getWebGLRenderer()
-    );
+    this.finalComposer = new EffectComposer(this.engine.renderer);
     this.finalComposer.addPass(this.renderScene);
     this.finalComposer.addPass(this.mixPass);
     this.finalComposer.addPass(this.outputPass);
 
-    this.world.viewport.events.on("change", () => this.onResize());
+    this.engine.viewport.events.on("change", () => this.onResize());
   }
 
   static get vertexShader(): string {
@@ -113,9 +106,9 @@ export class SelectiveBloom {
   }
 
   public render(): void {
-    this.world.scene.getScene().traverse((obj) => this.darkenNonBloomed(obj));
+    this.engine.scene.traverse((obj) => this.darkenNonBloomed(obj));
     this.bloomComposer.render();
-    this.world.scene.getScene().traverse((obj) => this.restoreMaterial(obj));
+    this.engine.scene.traverse((obj) => this.restoreMaterial(obj));
     this.finalComposer.render();
   }
 
@@ -134,8 +127,8 @@ export class SelectiveBloom {
   }
 
   private onResize(): void {
-    const width = this.world.viewport.width;
-    const height = this.world.viewport.height;
+    const width = this.engine.viewport.width;
+    const height = this.engine.viewport.height;
     this.bloomComposer.setSize(width, height);
     this.finalComposer.setSize(width, height);
   }

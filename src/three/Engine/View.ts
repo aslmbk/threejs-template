@@ -1,30 +1,23 @@
-import { World } from "./World";
+import { Engine } from "./Engine";
 import * as THREE from "three";
 
-export class View {
-  private world: World;
-  public camera: THREE.PerspectiveCamera;
-
+export class View extends THREE.PerspectiveCamera {
+  private engine: Engine;
   constructor() {
-    this.world = World.getInstance();
-    this.camera = new THREE.PerspectiveCamera(
-      75,
-      this.world.viewport.ratio,
-      0.1,
-      1000
-    );
-    this.camera.position.set(0, 0, 6);
-    this.world.scene.add(this.camera);
+    const engine = Engine.getInstance();
+    super(75, engine.viewport.ratio, 0.1, 1000);
+    this.engine = engine;
 
-    this.world.viewport.events.on("change", () => {
-      this.resize();
+    this.position.set(0, 0, 6);
+    this.engine.scene.add(this);
+
+    this.engine.viewport.events.on("change", () => {
+      this.onResize();
     });
   }
 
-  private resize() {
-    this.camera.aspect = this.world.viewport.ratio;
-    this.camera.updateProjectionMatrix();
+  private onResize() {
+    this.aspect = this.engine.viewport.ratio;
+    this.updateProjectionMatrix();
   }
-
-  public dispose() {}
 }

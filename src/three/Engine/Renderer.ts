@@ -1,47 +1,37 @@
 import * as THREE from "three";
-import { World } from "./World";
+import { Engine } from "./Engine";
 
-export class Renderer {
-  private renderer: THREE.WebGLRenderer;
-  private world: World;
+export class Renderer extends THREE.WebGLRenderer {
+  private engine: Engine;
   private autoRender: boolean;
 
   constructor(autoRender: boolean = true) {
-    this.world = World.getInstance();
-    this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
-    });
-
-    this.world.domElement.appendChild(this.renderer.domElement);
+    super({ antialias: true });
 
     this.autoRender = autoRender;
 
-    this.resize();
-    this.render();
-    this.world.viewport.events.on("change", () => {
-      this.resize();
+    this.engine = Engine.getInstance();
+    this.engine.domElement.appendChild(this.domElement);
+
+    this.onResize();
+
+    this.engine.viewport.events.on("change", () => {
+      this.onResize();
     });
-    this.world.time.events.on(
+    this.engine.time.events.on(
       "tick",
       () => {
         if (this.autoRender) {
-          this.render();
+          this.render(this.engine.scene, this.engine.view);
         }
       },
       5
     );
   }
 
-  private resize() {
-    this.renderer.setSize(
-      this.world.viewport.width,
-      this.world.viewport.height
-    );
-    this.renderer.setPixelRatio(this.world.viewport.pixelRatio);
-  }
-
-  public render() {
-    this.renderer.render(this.world.scene.getScene(), this.world.view.camera);
+  private onResize() {
+    this.setSize(this.engine.viewport.width, this.engine.viewport.height);
+    this.setPixelRatio(this.engine.viewport.pixelRatio);
   }
 
   public stop() {
@@ -50,21 +40,5 @@ export class Renderer {
 
   public start() {
     this.autoRender = true;
-  }
-
-  public getDomElement() {
-    return this.renderer.domElement;
-  }
-
-  public getWebGLRenderer() {
-    return this.renderer;
-  }
-
-  public setClearColor(color: THREE.ColorRepresentation) {
-    this.renderer.setClearColor(color);
-  }
-
-  public dispose() {
-    this.renderer.dispose();
   }
 }

@@ -1,24 +1,14 @@
 import { OrbitControls as OrbitControlsThree } from "three/addons/controls/OrbitControls.js";
-import { World } from "./World";
+import { Engine } from "./Engine";
 
-export class OrbitControls {
-  private world: World;
-  private controls: OrbitControlsThree;
-
+export class OrbitControls extends OrbitControlsThree {
   constructor() {
-    this.world = World.getInstance();
-    this.controls = new OrbitControlsThree(
-      this.world.view.camera,
-      this.world.renderer.getDomElement()
-    );
-    this.controls.enableDamping = true;
+    const engine = Engine.getInstance();
+    super(engine.view, engine.renderer.domElement);
+    this.enableDamping = true;
 
-    this.world.time.events.on("tick", () => {
+    engine.time.events.on("tick", () => {
       this.update();
     });
-  }
-
-  public update() {
-    this.controls.update();
   }
 }

@@ -1,29 +1,50 @@
 import { Events } from "./Events";
 import { Timer } from "three/addons/misc/Timer.js";
 
-export class Time {
-  private timer = new Timer();
-  public elapsed = 0;
-  public delta = 0;
+export class Time extends Timer {
   public events = new Events<{
     trigger: "tick";
     args: { elapsed: number; delta: number }[];
   }>();
 
+  private running: boolean = false;
+  private animationFrameId: number | null = null;
+
   constructor() {
-    this.tick();
+    super();
+    this.start();
+  }
+
+  public start() {
+    if (!this.running) {
+      this.running = true;
+      this.tick();
+    }
+  }
+
+  public stop() {
+    this.running = false;
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
   }
 
   private tick() {
-    this.timer.update();
-    this.elapsed = this.timer.getElapsed();
-    this.delta = this.timer.getDelta();
-    this.events.trigger("tick", { elapsed: this.elapsed, delta: this.delta });
+    if (!this.running) return;
 
-    requestAnimationFrame(() => this.tick());
+    this.update();
+    this.events.trigger("tick", {
+      elapsed: this.getElapsed(),
+      delta: this.getDelta(),
+    });
+
+    this.animationFrameId = requestAnimationFrame(() => this.tick());
   }
 
   public dispose() {
-    this.timer.dispose();
+    super.dispose();
+    this.stop();
+    return this;
   }
 }

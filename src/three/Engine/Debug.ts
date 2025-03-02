@@ -1,17 +1,9 @@
 import { Pane } from "tweakpane";
 
-export class Debug {
-  public panel: Pane;
-
+export class Debug extends Pane {
   constructor() {
     const active = location.hash.indexOf("debug") !== -1;
-    this.panel = new Pane();
-    this.panel.hidden = !active;
-  }
-
-  public dispose() {
-    if (!import.meta.env.DEV) {
-      this.panel.dispose();
-    }
+    super();
+    this.hidden = !active;
   }
 }

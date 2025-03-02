@@ -1,8 +1,8 @@
 import { Events } from "./Events";
-import { World } from "./World";
+import { Engine } from "./Engine";
 
 export class Viewport {
-  private world: World;
+  private engine: Engine;
   public width = 0;
   public height = 0;
   public ratio = 0;
@@ -10,7 +10,7 @@ export class Viewport {
   public events = new Events<{ trigger: "change"; args: [] }>();
 
   constructor() {
-    this.world = World.getInstance();
+    this.engine = Engine.getInstance();
     this.measure();
     window.addEventListener("resize", () => {
       this.measure();
@@ -19,8 +19,8 @@ export class Viewport {
   }
 
   private measure() {
-    this.width = this.world.domElement.clientWidth;
-    this.height = this.world.domElement.clientHeight;
+    this.width = this.engine.domElement.clientWidth;
+    this.height = this.engine.domElement.clientHeight;
     this.ratio = this.width / this.height;
     this.pixelRatio = Math.min(window.devicePixelRatio, 2);
   }

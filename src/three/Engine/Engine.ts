@@ -6,13 +6,13 @@ import { View } from "./View";
 import { Renderer } from "./Renderer";
 import { OrbitControls } from "./OrbitControls";
 
-export type WorldOptions = {
+export type EngineOptions = {
   domElement: HTMLElement;
   autoRender?: boolean;
 };
 
-export class World {
-  private static instance: World;
+export class Engine {
+  private static instance: Engine | null = null;
   public domElement!: HTMLElement;
   public debug!: Debug;
   public time!: Time;
@@ -22,10 +22,13 @@ export class World {
   public renderer!: Renderer;
   public controls!: OrbitControls;
 
-  constructor({ domElement, autoRender = true }: WorldOptions) {
-    if (World.instance) return World.instance;
-    World.instance = this;
+  constructor({ domElement, autoRender = true }: EngineOptions) {
+    if (Engine.instance) {
+      if (Engine.instance.domElement === domElement) return Engine.instance;
+      Engine.instance.dispose();
+    }
 
+    Engine.instance = this;
     this.domElement = domElement;
 
     this.debug = new Debug();
@@ -37,11 +40,11 @@ export class World {
     this.controls = new OrbitControls();
   }
 
-  public static getInstance(): World {
-    if (!World.instance) {
-      throw new Error("World instance not initialized");
+  public static getInstance(): Engine {
+    if (!Engine.instance) {
+      throw new Error("Engine instance not initialized");
     }
-    return World.instance;
+    return Engine.instance;
   }
 
   public dispose() {
@@ -49,7 +52,8 @@ export class World {
     this.time.dispose();
     this.viewport.dispose();
     this.scene.dispose();
-    this.view.dispose();
     this.renderer.dispose();
+    this.controls.dispose();
+    Engine.instance = null;
   }
 }
