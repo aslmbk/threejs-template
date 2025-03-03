@@ -49,7 +49,10 @@ export class Experience extends Engine {
   }
 
   public dispose() {
-    this.scene.dispose();
+    this.particles.dispose();
     this.gpuComputation.dispose();
+    this.stats.deactivate();
+    this.debug.children.forEach((child) => child.dispose());
+    this.scene.dispose();
   }
 }

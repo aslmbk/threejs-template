@@ -11,8 +11,10 @@ export class Particles {
 
   constructor() {
     const geometry = new THREE.SphereGeometry(3);
-    this.positionsAttribute = geometry.attributes
-      .position as THREE.BufferAttribute;
+    this.positionsAttribute = (
+      geometry.attributes.position as THREE.BufferAttribute
+    ).clone();
+    geometry.dispose();
     this.textureSize = Math.ceil(Math.sqrt(this.positionsAttribute.count));
 
     const uvArray = new Float32Array(this.positionsAttribute.count * 2);
@@ -57,5 +59,10 @@ export class Particles {
 
   public changeParticlesTexture(texture: THREE.Texture) {
     this.material.uniforms.uPositionsTexture.value = texture;
+  }
+
+  public dispose() {
+    this.geometry.dispose();
+    this.material.dispose();
   }
 }
