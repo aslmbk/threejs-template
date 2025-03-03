@@ -1,80 +1,54 @@
 import { Engine } from "./Engine";
-import * as THREE from "three";
-import { Lights } from "./Lights";
-import { SelectiveBloom } from "./SelectiveBloom";
+import { DebugController } from "./DebugController";
+import { Particles } from "./Particles";
+import { Config } from "./Config";
+import { GPUComputation } from "./GPUComputation";
 
 export class Experience extends Engine {
-  private lights: Lights;
-  private cube: THREE.Mesh | null = null;
-  private sphere: THREE.Mesh | null = null;
-  private bloom: SelectiveBloom;
+  public config: Config;
+  public particles: Particles;
+  public debugController: DebugController;
+  public gpuComputation: GPUComputation;
 
   constructor(domElement: HTMLElement) {
     super({ domElement });
-    this.lights = new Lights();
+    this.config = new Config();
+    this.debugController = new DebugController(this);
 
-    this.bloom = new SelectiveBloom(this, {
-      threshold: 0,
-      strength: 0.5,
-      radius: 0.1,
-      exposure: 1,
-    });
+    this.particles = new Particles();
+    this.particles.material.uniforms.uSize.value = this.config.uSize;
+    this.scene.add(this.particles.points);
 
-    this.time.events.on("tick", ({ elapsed }) => {
-      this.animate(elapsed);
+    const particlesCount = this.particles.geometry.attributes.position.count;
+
+    this.gpuComputation = new GPUComputation(
+      this.renderer,
+      Math.ceil(Math.sqrt(particlesCount))
+    );
+    this.gpuComputation.setTextureDataFromAttribute(
+      this.particles.geometry.attributes.position
+    );
+    this.gpuComputation.init();
+    this.scene.add(this.gpuComputation.getDebugPlane());
+
+    this.viewport.events.on("change", () => {
+      this.particles.onResize(
+        this.viewport.width,
+        this.viewport.height,
+        this.viewport.pixelRatio
+      );
     });
     this.time.events.on(
       "tick",
       () => {
-        this.bloom.render();
+        this.gpuComputation.update();
       },
-      5
+      4
     );
-
-    this.createLights();
-    this.createObjects();
-  }
-
-  private createLights() {
-    const directionalLight = this.lights.createDirectionalLight({
-      color: "white",
-      intensity: 2,
-      position: new THREE.Vector3(1, 1, 1),
-    });
-    this.scene.add(directionalLight);
-
-    const ambientLight = this.lights.createAmbientLight({
-      color: "white",
-      intensity: 0.5,
-    });
-    this.scene.add(ambientLight);
-  }
-
-  private createObjects() {
-    this.cube = new THREE.Mesh(
-      new THREE.BoxGeometry(1, 1, 1),
-      new THREE.MeshStandardMaterial({ color: "blue" })
-    );
-    this.cube.position.set(-1, 0, 0);
-    this.scene.add(this.cube);
-
-    this.sphere = new THREE.Mesh(
-      new THREE.SphereGeometry(1, 32, 32),
-      new THREE.MeshBasicMaterial({ color: "red" })
-    );
-    this.sphere.position.set(1, 0, 0);
-    this.scene.add(this.sphere);
-    this.bloom.toggleBloom(this.sphere);
-  }
-
-  private animate(elapsed: number) {
-    if (this.cube) {
-      this.cube.rotation.x = elapsed;
-      this.cube.rotation.y = elapsed;
-    }
   }
 
   public dispose() {
     this.scene.dispose();
+    this.gpuComputation.dispose();
   }
 }
