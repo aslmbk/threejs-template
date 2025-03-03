@@ -9,6 +9,7 @@ export class GPUComputation {
   private computationRenderer: GPUComputationRenderer;
   private baseTexture: THREE.Texture;
   private variable: Variable;
+  private debugPlane: THREE.Mesh | null = null;
 
   constructor(renderer: THREE.WebGLRenderer, size: number) {
     this.computationRenderer = new GPUComputationRenderer(size, size, renderer);
@@ -37,6 +38,11 @@ export class GPUComputation {
     this.baseTexture.needsUpdate = true;
   }
 
+  public getCRTTexture() {
+    return this.computationRenderer.getCurrentRenderTarget(this.variable)
+      .texture;
+  }
+
   public init() {
     this.computationRenderer.init();
   }
@@ -44,14 +50,18 @@ export class GPUComputation {
   public getDebugPlane() {
     const geometry = new THREE.PlaneGeometry(3, 3);
     const material = new THREE.MeshBasicMaterial({
-      map: this.computationRenderer.getCurrentRenderTarget(this.variable)
-        .texture,
+      map: this.getCRTTexture(),
     });
-    return new THREE.Mesh(geometry, material);
+    this.debugPlane = new THREE.Mesh(geometry, material);
+    return this.debugPlane;
   }
 
   public update() {
     this.computationRenderer.compute();
+    if (this.debugPlane) {
+      (this.debugPlane.material as THREE.MeshBasicMaterial).map =
+        this.getCRTTexture();
+    }
   }
 
   public dispose() {

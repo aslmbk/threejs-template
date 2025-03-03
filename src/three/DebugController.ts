@@ -23,7 +23,7 @@ export class DebugController {
     particlesFolder
       .addBinding(experience.config, "uSize")
       .on("change", ({ value }) => {
-        experience.particles.material.uniforms.uSize.value = value;
+        experience.particles.changeParticlesSize(value);
       });
   }
 }

@@ -5,10 +5,10 @@ import { Config } from "./Config";
 import { GPUComputation } from "./GPUComputation";
 
 export class Experience extends Engine {
-  public config: Config;
-  public particles: Particles;
-  public debugController: DebugController;
-  public gpuComputation: GPUComputation;
+  public readonly config: Config;
+  public readonly particles: Particles;
+  public readonly debugController: DebugController;
+  public readonly gpuComputation: GPUComputation;
 
   constructor(domElement: HTMLElement) {
     super({ domElement });
@@ -16,17 +16,15 @@ export class Experience extends Engine {
     this.debugController = new DebugController(this);
 
     this.particles = new Particles();
-    this.particles.material.uniforms.uSize.value = this.config.uSize;
+    this.particles.changeParticlesSize(this.config.uSize);
     this.scene.add(this.particles.points);
-
-    const particlesCount = this.particles.geometry.attributes.position.count;
 
     this.gpuComputation = new GPUComputation(
       this.renderer,
-      Math.ceil(Math.sqrt(particlesCount))
+      this.particles.textureSize
     );
     this.gpuComputation.setTextureDataFromAttribute(
-      this.particles.geometry.attributes.position
+      this.particles.positionsAttribute
     );
     this.gpuComputation.init();
     this.scene.add(this.gpuComputation.getDebugPlane());
@@ -42,6 +40,9 @@ export class Experience extends Engine {
       "tick",
       () => {
         this.gpuComputation.update();
+        this.particles.changeParticlesTexture(
+          this.gpuComputation.getCRTTexture()
+        );
       },
       4
     );
