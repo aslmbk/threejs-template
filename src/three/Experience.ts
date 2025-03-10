@@ -1,56 +1,44 @@
 import { Engine } from "./Engine";
 import { DebugController } from "./DebugController";
-import { Particles } from "./Particles";
 import { Config } from "./Config";
-import { GPUComputation } from "./GPUComputation";
+import * as THREE from "three";
+import { SelectiveBloom } from "./SelectiveBloom";
 
 export class Experience extends Engine {
   public readonly config: Config;
-  public readonly particles: Particles;
   public readonly debugController: DebugController;
-  public readonly gpuComputation: GPUComputation;
+
+  private selectiveBloom: SelectiveBloom;
 
   constructor(domElement: HTMLElement) {
-    super({ domElement });
+    super({ domElement, autoRender: false });
     this.config = new Config();
     this.debugController = new DebugController(this);
+    this.stats.activate();
 
-    this.particles = new Particles();
-    this.particles.changeParticlesSize(this.config.uSize);
-    this.scene.add(this.particles.points);
+    this.selectiveBloom = new SelectiveBloom(this);
 
-    this.gpuComputation = new GPUComputation(
-      this.renderer,
-      this.particles.textureSize
-    );
-    this.gpuComputation.setTextureDataFromAttribute(
-      this.particles.positionsAttribute
-    );
-    this.gpuComputation.init();
-    this.scene.add(this.gpuComputation.getDebugPlane());
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    const cube1 = new THREE.Mesh(geometry, material);
+    cube1.position.x = -2;
+    this.scene.add(cube1);
 
-    this.viewport.events.on("change", () => {
-      this.particles.onResize(
-        this.viewport.width,
-        this.viewport.height,
-        this.viewport.pixelRatio
-      );
-    });
+    const cube2 = new THREE.Mesh(geometry, material);
+    cube2.position.x = 2;
+    this.selectiveBloom.toggleBloom(cube2);
+    this.scene.add(cube2);
+
     this.time.events.on(
       "tick",
       () => {
-        this.gpuComputation.update();
-        this.particles.changeParticlesTexture(
-          this.gpuComputation.getCRTTexture()
-        );
+        this.selectiveBloom.render();
       },
-      4
+      5
     );
   }
 
   public dispose() {
-    this.particles.dispose();
-    this.gpuComputation.dispose();
     this.stats.deactivate();
     this.debug.children.forEach((child) => child.dispose());
     this.scene.dispose();

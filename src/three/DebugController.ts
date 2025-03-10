@@ -14,16 +14,5 @@ export class DebugController {
       .on("change", ({ value }) => {
         experience.renderer.setClearColor(value);
       });
-
-    const particlesFolder = experience.debug.addFolder({
-      title: "particles",
-      expanded: true,
-    });
-
-    particlesFolder
-      .addBinding(experience.config, "uSize")
-      .on("change", ({ value }) => {
-        experience.particles.changeParticlesSize(value);
-      });
   }
 }

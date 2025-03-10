@@ -106,9 +106,12 @@ export class SelectiveBloom {
   }
 
   public render(): void {
+    const clearColor = this.renderScene.clearColor;
     this.engine.scene.traverse((obj) => this.darkenNonBloomed(obj));
+    this.renderScene.clearColor = new THREE.Color(0x000000);
     this.bloomComposer.render();
     this.engine.scene.traverse((obj) => this.restoreMaterial(obj));
+    this.renderScene.clearColor = clearColor;
     this.finalComposer.render();
   }
 
