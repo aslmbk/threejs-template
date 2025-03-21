@@ -2,17 +2,16 @@ import StatsJS from "stats.js";
 import StatsGL from "stats-gl";
 import { Engine } from "./Engine";
 
-export type StatsType = "1" | "2";
+type StatsType = "1" | "2";
 
 export class Stats {
   private statsJS: StatsJS;
   private statsGL: StatsGL;
   private active = true;
-  private type: StatsType;
+  private type: StatsType = "1";
   private engine: Engine;
 
-  constructor(type: StatsType = "1") {
-    this.type = type;
+  constructor() {
     this.engine = Engine.getInstance();
     this.statsJS = new StatsJS();
     this.statsGL = new StatsGL({
@@ -33,9 +32,10 @@ export class Stats {
     });
   }
 
-  public activate() {
+  public activate(type: StatsType = "1") {
     if (location.hash.indexOf("debug") === -1) return;
     this.active = true;
+    this.type = type;
     if (this.type === "1") {
       document.body.appendChild(this.statsJS.dom);
     } else {
