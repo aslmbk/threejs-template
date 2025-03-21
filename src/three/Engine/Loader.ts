@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { GLTF, GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { TextureAtlas } from "./utils/TextureAtlas";
+import { Events } from "./utils/Events";
 
 type GLTFLoaderOptions = {
   url: string;
@@ -17,24 +18,48 @@ type TextureLoaderOptions = {
   onError?: (err: unknown) => void;
 };
 
-type TextureAtlasOptions = {
-  name: string;
-  urls: string[];
-};
-
 export class Loader {
+  private loadingManager: THREE.LoadingManager;
   private gltfLoader: GLTFLoader;
   private textureLoader: THREE.TextureLoader;
   private textureAtlas: TextureAtlas;
 
+  public readonly events = new Events<
+    | {
+        trigger: "load";
+        args: [];
+      }
+    | {
+        trigger: "progress";
+        args: [
+          {
+            total: number;
+            loaded: number;
+            url: string;
+          }
+        ];
+      }
+    | {
+        trigger: "error";
+        args: [string];
+      }
+  >();
+
   constructor() {
-    this.gltfLoader = new GLTFLoader();
-    const dracoLoader = new DRACOLoader();
+    this.loadingManager = new THREE.LoadingManager(
+      () => this.events.trigger("load"),
+      (url, loaded, total) =>
+        this.events.trigger("progress", { url, loaded, total }),
+      (url) => this.events.trigger("error", url)
+    );
+
+    this.gltfLoader = new GLTFLoader(this.loadingManager);
+    const dracoLoader = new DRACOLoader(this.loadingManager);
     dracoLoader.setDecoderPath("/draco/");
     this.gltfLoader.setDRACOLoader(dracoLoader);
 
-    this.textureLoader = new THREE.TextureLoader();
-    this.textureAtlas = new TextureAtlas();
+    this.textureLoader = new THREE.TextureLoader(this.loadingManager);
+    this.textureAtlas = new TextureAtlas(this.textureLoader);
   }
 
   public loadGLTF(options: GLTFLoaderOptions) {
@@ -67,17 +92,7 @@ export class Loader {
     return this.textureLoader.loadAsync(options.url, options.onProgress);
   }
 
-  public loadTextureAtlas(options: TextureAtlasOptions) {
-    this.textureAtlas.Load(options.name, options.urls);
-    // Using exmaple
-    // this.textureAtlas.Load(name, [url1, url2, url3]);
-    // this.textureAtlas.onLoad = () => {
-    //   const texture = this.textureAtlas.Info[name].atlas;
-    //   texture.colorSpace = THREE.SRGBColorSpace;
-    //   texture.minFilter = THREE.NearestFilter;
-    //   texture.magFilter = THREE.NearestFilter;
-    //   ... do something with the texture
-    // };
-    return this.textureAtlas;
+  public loadTextureAtlas(urls: string[]) {
+    return this.textureAtlas.load(urls);
   }
 }

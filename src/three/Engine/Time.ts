@@ -1,4 +1,4 @@
-import { Events } from "./Events";
+import { Events } from "./utils/Events";
 import { Timer } from "three/addons/misc/Timer.js";
 
 export class Time extends Timer {
