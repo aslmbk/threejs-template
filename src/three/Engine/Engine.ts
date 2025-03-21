@@ -6,11 +6,12 @@ import { View } from "./View";
 import { Renderer } from "./Renderer";
 import { OrbitControls } from "./OrbitControls";
 import { Loader } from "./Loader";
-import { Stats } from "./Stats";
+import { Stats, StatsType } from "./Stats";
 
 export type EngineOptions = {
   domElement: HTMLElement;
   autoRender?: boolean;
+  statsType?: StatsType;
 };
 
 export class Engine {
@@ -26,7 +27,11 @@ export class Engine {
   public readonly loader!: Loader;
   public readonly stats!: Stats;
 
-  constructor({ domElement, autoRender = true }: EngineOptions) {
+  constructor({
+    domElement,
+    autoRender = true,
+    statsType = "1",
+  }: EngineOptions) {
     if (Engine.instance) {
       if (Engine.instance.domElement === domElement) return Engine.instance;
       Engine.instance.dispose();
@@ -43,7 +48,7 @@ export class Engine {
     this.renderer = new Renderer(autoRender);
     this.controls = new OrbitControls();
     this.loader = new Loader();
-    this.stats = new Stats();
+    this.stats = new Stats(statsType);
   }
 
   public static getInstance(): Engine {
