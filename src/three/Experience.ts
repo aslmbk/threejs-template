@@ -41,6 +41,11 @@ export class Experience extends Engine {
   public dispose() {
     this.stats.deactivate();
     this.debug.children.forEach((child) => child.dispose());
-    this.scene.dispose();
+    this.scene.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.geometry.dispose();
+        child.material.dispose();
+      }
+    });
   }
 }
