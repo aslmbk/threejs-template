@@ -116,9 +116,10 @@ export class SelectiveBloom {
   }
 
   private darkenNonBloomed(obj: THREE.Object3D): void {
-    if ((obj as THREE.Mesh).isMesh && !this.bloomLayer.test(obj.layers)) {
-      this.materials[obj.uuid] = (obj as THREE.Mesh).material;
-      (obj as THREE.Mesh).material = this.darkMaterial;
+    const o = obj as THREE.Mesh & { isMesh: boolean; isLine: boolean };
+    if ((o.isMesh || o.isLine) && !this.bloomLayer.test(obj.layers)) {
+      this.materials[obj.uuid] = o.material;
+      o.material = this.darkMaterial;
     }
   }
 

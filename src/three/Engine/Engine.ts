@@ -5,6 +5,7 @@ import { Viewport } from "./Viewport";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { Loader } from "./Loader";
 import { Stats } from "./Stats";
+import { Helpers } from "./Helpers";
 
 export type EngineOptions = {
   domElement: HTMLElement;
@@ -22,6 +23,7 @@ export class Engine {
   public readonly controls!: OrbitControls;
   public readonly loader!: Loader;
   public readonly stats!: Stats;
+  public readonly helpers!: Helpers;
 
   private autoRender: boolean;
 
@@ -38,6 +40,7 @@ export class Engine {
     this.controls = new OrbitControls(this.view, this.renderer.domElement);
     this.loader = new Loader();
     this.stats = new Stats();
+    this.helpers = new Helpers(this.scene);
 
     this.scene.add(this.view);
     this.view.position.set(0, 0, 6);
