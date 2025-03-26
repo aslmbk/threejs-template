@@ -5,8 +5,6 @@ import { Experience } from "./Experience";
 
 export class DebugController {
   constructor(experience: Experience) {
-    experience.renderer.setClearColor(experience.config.clearColor);
-
     const rendererFolder = experience.debug.addFolder({
       title: "renderer",
       expanded: true,

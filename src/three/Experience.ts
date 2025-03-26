@@ -14,6 +14,8 @@ export class Experience extends Engine {
     super({ domElement, autoRender: false });
     this.config = new Config();
     this.debugController = new DebugController(this);
+
+    this.renderer.setClearColor(this.config.clearColor);
     this.stats.activate();
 
     this.selectiveBloom = new SelectiveBloom(
