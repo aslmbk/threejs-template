@@ -42,8 +42,8 @@ export class Experience extends Engine {
       },
       5
     );
-    this.viewport.events.on("change", () => {
-      this.selectiveBloom.resize(this.viewport.width, this.viewport.height);
+    this.viewport.events.on("change", ({ width, height }) => {
+      this.selectiveBloom.resize(width, height);
     });
   }
 
