@@ -16,7 +16,11 @@ export class Experience extends Engine {
     this.debugController = new DebugController(this);
     this.stats.activate();
 
-    this.selectiveBloom = new SelectiveBloom(this);
+    this.selectiveBloom = new SelectiveBloom(
+      this.renderer,
+      this.scene,
+      this.view
+    );
 
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
@@ -36,6 +40,9 @@ export class Experience extends Engine {
       },
       5
     );
+    this.viewport.events.on("change", () => {
+      this.selectiveBloom.resize(this.viewport.width, this.viewport.height);
+    });
   }
 
   public dispose() {
