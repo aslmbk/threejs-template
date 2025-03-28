@@ -21,7 +21,7 @@ export class Experience extends Engine {
     this.selectiveBloom = new SelectiveBloom(
       this.renderer,
       this.scene,
-      this.view
+      this.camera
     );
 
     const geometry = new THREE.BoxGeometry(1, 1, 1);
