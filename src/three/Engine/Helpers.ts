@@ -7,22 +7,22 @@ export class Helpers {
     this.scene = scene;
   }
 
-  addAxesHelper(size: number = 5) {
+  public addAxesHelper(size: number = 5) {
     const axesHelper = new THREE.AxesHelper(size);
     this.scene.add(axesHelper);
   }
 
-  addGridHelper(size: number = 100, divisions: number = 10) {
+  public addGridHelper(size: number = 100, divisions: number = 10) {
     const gridHelper = new THREE.GridHelper(size, divisions);
     this.scene.add(gridHelper);
   }
 
-  addCameraHelper(camera: THREE.Camera) {
+  public addCameraHelper(camera: THREE.Camera) {
     const cameraHelper = new THREE.CameraHelper(camera);
     this.scene.add(cameraHelper);
   }
 
-  addDirectionalLightHelper(light: THREE.DirectionalLight) {
+  public addDirectionalLightHelper(light: THREE.DirectionalLight) {
     const directionalLightHelper = new THREE.DirectionalLightHelper(light);
     this.scene.add(directionalLightHelper);
   }

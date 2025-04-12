@@ -1,3 +1,3 @@
 export class Config {
-  clearColor = "#222533";
+  public clearColor = "#222533";
 }
