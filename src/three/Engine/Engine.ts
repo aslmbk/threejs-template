@@ -56,7 +56,7 @@ export class Engine {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.rays = new Rays(this.camera);
-    this.loader = new Loader();
+    this.loader = new Loader(this.scene);
     this.stats = new Stats();
     this.helpers = new Helpers(this.scene);
 
