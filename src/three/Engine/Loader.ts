@@ -47,13 +47,10 @@ type RGBE_EXRLoaderOptions = {
 
 type AsyncOmitter<T> = Omit<T, "onLoad" | "onError">;
 
+export type StartEventArgs = { url: string };
+export type ProgressEventArgs = { total: number; loaded: number; url: string };
 export type LoadEventArgs = void;
-export type ProgressEventArgs = {
-  total: number;
-  loaded: number;
-  url: string;
-};
-export type ErrorEventArgs = string;
+export type ErrorEventArgs = { url: string };
 
 export class Loader {
   public readonly scene: THREE.Scene;
@@ -67,8 +64,9 @@ export class Loader {
   private exrLoader: EXRLoader;
 
   public readonly events = new Events<
-    | { trigger: "load"; args: LoadEventArgs }
+    | { trigger: "start"; args: StartEventArgs }
     | { trigger: "progress"; args: ProgressEventArgs }
+    | { trigger: "load"; args: LoadEventArgs }
     | { trigger: "error"; args: ErrorEventArgs }
   >();
 
@@ -79,8 +77,13 @@ export class Loader {
       () => this.events.trigger("load"),
       (url, loaded, total) =>
         this.events.trigger("progress", { url, loaded, total }),
-      (url) => this.events.trigger("error", url)
+      (url) => this.events.trigger("error", { url })
     );
+    const itemStart = this.loadingManager.itemStart.bind(this.loadingManager);
+    this.loadingManager.itemStart = (url) => {
+      itemStart(url);
+      this.events.trigger("start", { url });
+    };
 
     this.gltfLoader = new GLTFLoader(this.loadingManager);
     const dracoLoader = new DRACOLoader(this.loadingManager);
