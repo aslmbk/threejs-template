@@ -1,25 +1,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+type EventMap = {
+  [key: string]: any;
+};
+
 type CallbackFunction<Args> = Args extends void
   ? () => void
   : (args: Args) => void;
 
-type CallbacksStore<T extends { trigger: string; args: any }> = {
-  [K in T["trigger"]]?: Record<
-    number,
-    CallbackFunction<Extract<T, { trigger: K }>["args"]>[]
-  >;
+type CallbacksStore<T extends EventMap> = {
+  [K in keyof T]?: Record<number, CallbackFunction<T[K]>[]>;
 };
 
-export class Events<
-  T extends { trigger: string; args: any },
-  O extends number = 1 | 2 | 3 | 4 | 5
-> {
+export class Events<T extends EventMap, O extends number = 1 | 2 | 3 | 4 | 5> {
   private callbacks: CallbacksStore<T> = {};
 
-  public on<K extends T["trigger"]>(
+  public on<K extends keyof T>(
     eventName: K,
-    callback: CallbackFunction<Extract<T, { trigger: K }>["args"]>,
+    callback: CallbackFunction<T[K]>,
     order: O = 1 as O
   ): this {
     this.callbacks[eventName] ??= {};
@@ -28,9 +26,9 @@ export class Events<
     return this;
   }
 
-  public off<K extends T["trigger"]>(
+  public off<K extends keyof T>(
     eventName: K,
-    callback?: CallbackFunction<Extract<T, { trigger: K }>["args"]>
+    callback?: CallbackFunction<T[K]>
   ): this {
     const eventCallbacks = this.callbacks[eventName];
     if (!eventCallbacks) return this;
@@ -48,11 +46,9 @@ export class Events<
     return this;
   }
 
-  public trigger<K extends T["trigger"]>(
+  public trigger<K extends keyof T>(
     eventName: K,
-    ...args: Extract<T, { trigger: K }>["args"] extends void
-      ? []
-      : [Extract<T, { trigger: K }>["args"]]
+    ...args: T[K] extends void ? [] : [T[K]]
   ): this {
     const eventCallbacks = this.callbacks[eventName];
     if (!eventCallbacks) return this;

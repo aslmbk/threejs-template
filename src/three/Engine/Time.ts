@@ -8,8 +8,7 @@ export type TimeEventArgs = {
 
 export class Time extends Timer {
   public readonly events = new Events<{
-    trigger: "tick";
-    args: TimeEventArgs;
+    tick: TimeEventArgs;
   }>();
 
   private running: boolean = false;

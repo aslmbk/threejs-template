@@ -14,8 +14,7 @@ export class Viewport {
   public ratio = 0;
   public pixelRatio = 0;
   public readonly events = new Events<{
-    trigger: "change";
-    args: ViewportEventArgs;
+    change: ViewportEventArgs;
   }>();
   private onResizeCb = this.onResize.bind(this);
 

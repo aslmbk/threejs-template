@@ -8,10 +8,10 @@ export type KeyEventArgs = {
 
 export class Inputs {
   public readonly keys: Keys = {};
-  public readonly events = new Events<
-    | { trigger: "keydown"; args: KeyEventArgs }
-    | { trigger: "keyup"; args: KeyEventArgs }
-  >();
+  public readonly events = new Events<{
+    keydown: KeyEventArgs;
+    keyup: KeyEventArgs;
+  }>();
 
   constructor() {
     window.addEventListener("keydown", this.onKeyDown.bind(this));

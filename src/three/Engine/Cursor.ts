@@ -9,12 +9,12 @@ export type CursorEventArgs = {
 export class Cursor {
   public x = Infinity;
   public y = Infinity;
-  public readonly events = new Events<
-    | { trigger: "move"; args: CursorEventArgs }
-    | { trigger: "down"; args: CursorEventArgs }
-    | { trigger: "up"; args: CursorEventArgs }
-    | { trigger: "click"; args: CursorEventArgs }
-  >();
+  public readonly events = new Events<{
+    move: CursorEventArgs;
+    down: CursorEventArgs;
+    up: CursorEventArgs;
+    click: CursorEventArgs;
+  }>();
 
   private sizes = {
     width: 0,
