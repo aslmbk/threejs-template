@@ -175,7 +175,7 @@ export class Loader {
     return texture;
   }
 
-  public loadRGBELoader(options: RGBE_EXRLoaderOptions) {
+  public loadRGBE(options: RGBE_EXRLoaderOptions) {
     return this.rgbeLoader.load(
       options.url,
       (texture) => {
@@ -188,9 +188,7 @@ export class Loader {
     );
   }
 
-  public async loadRGBELoaderAsync(
-    options: AsyncOmitter<RGBE_EXRLoaderOptions>
-  ) {
+  public async loadRGBEAsync(options: AsyncOmitter<RGBE_EXRLoaderOptions>) {
     const texture = await this.rgbeLoader.loadAsync(
       options.url,
       options.onProgress
@@ -200,7 +198,7 @@ export class Loader {
     return texture;
   }
 
-  public loadEXRLoader(options: RGBE_EXRLoaderOptions) {
+  public loadEXR(options: RGBE_EXRLoaderOptions) {
     return this.exrLoader.load(
       options.url,
       (texture) => {
@@ -213,9 +211,7 @@ export class Loader {
     );
   }
 
-  public async loadEXRLoaderAsync(
-    options: AsyncOmitter<RGBE_EXRLoaderOptions>
-  ) {
+  public async loadEXRAsync(options: AsyncOmitter<RGBE_EXRLoaderOptions>) {
     const texture = await this.exrLoader.loadAsync(
       options.url,
       options.onProgress
