@@ -6,4 +6,12 @@ export class Debug extends Pane {
     super();
     this.hidden = !active;
   }
+
+  activate() {
+    this.hidden = false;
+  }
+
+  deactivate() {
+    this.hidden = true;
+  }
 }
