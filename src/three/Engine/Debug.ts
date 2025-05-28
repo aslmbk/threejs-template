@@ -2,16 +2,19 @@ import { Pane } from "tweakpane";
 
 export class Debug extends Pane {
   constructor() {
-    const active = location.hash.indexOf("debug") !== -1;
     super();
-    this.hidden = !active;
+    this.hidden = !this.isDebugMode;
   }
 
-  activate() {
+  private get isDebugMode() {
+    return location.hash.indexOf("debug") !== -1;
+  }
+
+  public activate() {
     this.hidden = false;
   }
 
-  deactivate() {
+  public deactivate() {
     this.hidden = true;
   }
 }

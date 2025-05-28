@@ -1,4 +1,4 @@
-import { Engine } from "./Engine";
+import { Engine } from "./engine";
 import { DebugController } from "./DebugController";
 import { Config } from "./Config";
 import * as THREE from "three";
@@ -16,7 +16,6 @@ export class Experience extends Engine {
     this.debugController = new DebugController(this);
 
     this.renderer.setClearColor(this.config.clearColor);
-    this.stats.activate();
 
     this.selectiveBloom = new SelectiveBloom(
       this.renderer,
@@ -48,7 +47,6 @@ export class Experience extends Engine {
   }
 
   public dispose() {
-    this.stats.deactivate();
     this.debug.children.forEach((child) => child.dispose());
     this.scene.traverse((child) => {
       if (child instanceof THREE.Mesh) {

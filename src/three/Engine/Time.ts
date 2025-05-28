@@ -1,4 +1,4 @@
-import { Events } from "./utils/Events";
+import { Events } from "../lib";
 import { Timer } from "three/addons/misc/Timer.js";
 
 export type TimeEventArgs = {

@@ -1,6 +1,8 @@
-import { toneMappingOptions } from "./Engine/utils/constants";
-import { colorSpaceOptions } from "./Engine/utils/constants";
-import { shadowMapTypeOptions } from "./Engine/utils/constants";
+import {
+  toneMappingOptions,
+  colorSpaceOptions,
+  shadowMapTypeOptions,
+} from "./lib";
 import { Experience } from "./Experience";
 
 export class DebugController {

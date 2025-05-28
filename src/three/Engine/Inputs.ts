@@ -1,4 +1,4 @@
-import { Events } from "./utils/Events";
+import { Events } from "../lib";
 
 type Keys = Record<string, boolean>;
 export type KeyEventArgs = {

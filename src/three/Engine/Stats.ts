@@ -17,6 +17,10 @@ export class Stats {
       trackGPU: true,
       trackHz: true,
     });
+
+    if (this.isDebugMode) {
+      this.activate();
+    }
   }
 
   private get isDebugMode() {
@@ -24,7 +28,7 @@ export class Stats {
   }
 
   public update() {
-    if (!this.isDebugMode || !this.active) return;
+    if (!this.active) return;
     if (this.type === "1") {
       this.statsJS.update();
     } else {
@@ -33,7 +37,6 @@ export class Stats {
   }
 
   public activate(type: StatsType = "1") {
-    if (!this.isDebugMode) return;
     this.active = true;
     this.type = type;
     if (this.type === "1") {
@@ -44,7 +47,6 @@ export class Stats {
   }
 
   public deactivate() {
-    if (!this.isDebugMode) return;
     this.active = false;
     if (this.type === "1") {
       document.body.removeChild(this.statsJS.dom);

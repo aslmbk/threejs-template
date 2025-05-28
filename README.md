@@ -2,9 +2,9 @@
 
 npm command for dependencies:
 
-npm i three stats-gl stats.js tweakpane
+npm i three stats-gl stats.js tweakpane mersennetwister
 
-npm i -D @types/three @tweakpane/core vite-plugin-glsl
+npm i -D @types/three @tweakpane/core vite-plugin-glsl @types/mersennetwister
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

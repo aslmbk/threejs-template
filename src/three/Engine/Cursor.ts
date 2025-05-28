@@ -1,4 +1,4 @@
-import { Events } from "./utils/Events";
+import { Events } from "../lib";
 
 export type CursorEventArgs = {
   x: number;

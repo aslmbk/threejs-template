@@ -3,8 +3,7 @@ import { type GLTF, GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 import { EXRLoader } from "three/addons/loaders/EXRLoader.js";
-import { TextureAtlas } from "./utils/TextureAtlas";
-import { Events } from "./utils/Events";
+import { TextureAtlas, Events } from "../lib";
 
 type EnvironmentOptions = {
   setEnvironment?: boolean;
