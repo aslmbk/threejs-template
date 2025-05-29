@@ -16,33 +16,19 @@ type EnvironmentOptions = {
   backgroundRotation?: THREE.Euler;
 };
 
-type GLTFLoaderOptions = {
-  url: string;
-  onLoad: (gltf: GLTF) => void;
+type LoaderOptions<Payload, Url extends string | string[] = string> = {
+  url: Url;
+  onLoad?: (payload: Payload) => void;
   onProgress?: (event: ProgressEvent) => void;
   onError?: (err: unknown) => void;
 };
 
-type TextureLoaderOptions = {
-  url: string;
-  onLoad?: (texture: THREE.Texture) => void;
-  onProgress?: (event: ProgressEvent) => void;
-  onError?: (err: unknown) => void;
-};
-
-type CubeTextureLoaderOptions = {
-  urls: string[];
-  onLoad?: (texture: THREE.CubeTexture) => void;
-  onProgress?: (event: ProgressEvent) => void;
-  onError?: (err: unknown) => void;
-} & EnvironmentOptions;
-
-type RGBE_EXRLoaderOptions = {
-  url: string;
-  onLoad?: (texture: THREE.DataTexture) => void;
-  onProgress?: (event: ProgressEvent) => void;
-  onError?: (err: unknown) => void;
-} & EnvironmentOptions;
+type GLTFLoaderOptions = LoaderOptions<GLTF>;
+type TextureLoaderOptions = LoaderOptions<THREE.Texture>;
+type CubeTextureLoaderOptions = LoaderOptions<THREE.CubeTexture, string[]> &
+  EnvironmentOptions;
+type RGBE_EXRLoaderOptions = LoaderOptions<THREE.DataTexture> &
+  EnvironmentOptions;
 
 type AsyncOmitter<T> = Omit<T, "onLoad" | "onError">;
 
@@ -124,7 +110,9 @@ export class Loader {
   public loadGLTF(options: GLTFLoaderOptions) {
     this.gltfLoader.load(
       options.url,
-      options.onLoad,
+      (gltf) => {
+        options.onLoad?.(gltf);
+      },
       options.onProgress,
       options.onError
     );
@@ -153,7 +141,7 @@ export class Loader {
 
   public loadCubeTexture(options: CubeTextureLoaderOptions) {
     return this.cubeTextureLoader.load(
-      options.urls,
+      options.url,
       (texture) => {
         this.setEnvironment({ ...options, environmentMap: texture });
         options.onLoad?.(texture);
@@ -167,7 +155,7 @@ export class Loader {
     options: AsyncOmitter<CubeTextureLoaderOptions>
   ) {
     const texture = await this.cubeTextureLoader.loadAsync(
-      options.urls,
+      options.url,
       options.onProgress
     );
     this.setEnvironment({ ...options, environmentMap: texture });
