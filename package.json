@@ -13,6 +13,7 @@
     "mersennetwister": "^0.2.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "simplex-noise": "^4.0.3",
     "stats-gl": "^3.6.0",
     "stats.js": "^0.17.0",
     "three": "^0.173.0",

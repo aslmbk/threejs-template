@@ -2,7 +2,7 @@
 
 npm command for dependencies:
 
-npm i three stats-gl stats.js tweakpane mersennetwister
+npm i three stats-gl stats.js tweakpane mersennetwister simplex-noise
 
 npm i -D @types/three @tweakpane/core vite-plugin-glsl @types/mersennetwister
 

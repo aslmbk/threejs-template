@@ -4,6 +4,19 @@ import * as THREE from "three";
 const mt = new MersenneTwister(1);
 export const random = mt.random.bind(mt);
 
+export const saturate = (v: number) => Math.min(1, Math.max(0, v));
+
+export const inverseLerp = (a: number, b: number, v: number) =>
+  saturate((v - a) / (b - a));
+
+export const remap = (a: number, b: number, c: number, d: number, v: number) =>
+  c + (d - c) * inverseLerp(a, b, v);
+
+export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+export const clamp = (v: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, v));
+
 interface Frame<T = number[]> {
   time: number;
   value: T;
