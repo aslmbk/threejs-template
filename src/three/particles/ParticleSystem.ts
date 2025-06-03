@@ -13,6 +13,7 @@ export class ParticleSystem {
     if (index !== -1) {
       this.emitters.splice(index, 1);
     }
+    emitter.dispose();
   }
 
   public step(time: Time) {
@@ -21,7 +22,6 @@ export class ParticleSystem {
       if (emitter.isActive) {
         emitter.step(time);
       } else {
-        emitter.dispose();
         this.removeEmitter(emitter);
       }
     }
