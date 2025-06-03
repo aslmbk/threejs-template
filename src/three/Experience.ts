@@ -2,57 +2,34 @@ import { Engine } from "./engine";
 import { DebugController } from "./DebugController";
 import { Config } from "./Config";
 import * as THREE from "three";
-import { SelectiveBloom } from "./SelectiveBloom";
 
 export class Experience extends Engine {
-  public readonly config: Config;
-  public readonly debugController: DebugController;
+  private static instance: Experience | null = null;
 
-  private selectiveBloom: SelectiveBloom;
+  public readonly config!: Config;
+  public readonly debugController!: DebugController;
 
   constructor(domElement: HTMLElement) {
-    super({ domElement, autoRender: false });
+    if (Experience.instance) return Experience.instance;
+    super({ domElement });
+    Experience.instance = this;
+
     this.config = new Config();
-    this.debugController = new DebugController(this);
+    this.debugController = new DebugController();
 
-    this.renderer.setClearColor(this.config.clearColor);
-
-    this.selectiveBloom = new SelectiveBloom(
-      this.renderer,
-      this.scene,
-      this.camera
-    );
-
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    const cube1 = new THREE.Mesh(geometry, material);
-    cube1.position.x = -2;
-    this.scene.add(cube1);
-
-    const cube2 = new THREE.Mesh(geometry, material);
-    cube2.position.x = 2;
-    this.selectiveBloom.toggleBloom(cube2);
-    this.scene.add(cube2);
-
-    this.time.events.on(
-      "tick",
-      () => {
-        this.selectiveBloom.render();
-      },
-      5
-    );
-    this.viewport.events.on("change", ({ width, height }) => {
-      this.selectiveBloom.resize(width, height);
-    });
+    this.createTemplate();
   }
 
-  public dispose() {
-    this.debug.children.forEach((child) => child.dispose());
-    this.scene.traverse((child) => {
-      if (child instanceof THREE.Mesh) {
-        child.geometry.dispose();
-        child.material.dispose();
-      }
+  private createTemplate() {
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true })
+    );
+    this.scene.add(mesh);
+
+    this.time.events.on("tick", ({ delta }) => {
+      mesh.rotation.x += delta;
+      mesh.rotation.y += delta;
     });
   }
 }

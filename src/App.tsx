@@ -7,10 +7,7 @@ export const App = () => {
 
   useEffect(() => {
     if (!containerRef.current) return;
-    const experience = new Experience(containerRef.current);
-    return () => {
-      experience.dispose();
-    };
+    new Experience(containerRef.current);
   }, []);
 
   return <div className="App" ref={containerRef} />;

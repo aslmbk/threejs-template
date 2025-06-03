@@ -1,3 +1,1 @@
-export class Config {
-  public clearColor = "#222533";
-}
+export class Config {}
