@@ -1,10 +1,9 @@
 import * as THREE from "three";
-import { MATH } from "../lib";
 
 export class Particle {
-  public id = MATH.random();
+  public id = 0;
   public life = 0;
   public maxLife = 0;
-  public position = new THREE.Vector3();
-  public velocity = new THREE.Vector3();
+  public readonly position = new THREE.Vector3();
+  public readonly velocity = new THREE.Vector3();
 }

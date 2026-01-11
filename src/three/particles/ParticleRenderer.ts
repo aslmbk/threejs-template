@@ -1,68 +1,95 @@
 import * as THREE from "three";
-import { Particle } from "./Particle";
+import type { Particle } from "./Particle";
 
-export type ParticleRendererParams = {
+type ParentParam = { parent: THREE.Object3D } | { scene: THREE.Object3D };
+
+export type ParticleRendererParams = ParentParam & {
   maxParticles: number;
-  material: THREE.ShaderMaterial;
-  scene: THREE.Object3D;
-  frustumCulled: boolean;
+  material: THREE.Material;
+
+  frustumCulled?: boolean;
+
+  disposeMaterial?: boolean;
 };
 
 export class ParticleRenderer {
-  private readonly params: ParticleRendererParams;
+  private readonly params: Required<
+    Omit<ParticleRendererParams, "scene" | "parent"> & {
+      parent: THREE.Object3D;
+    }
+  >;
+
   private readonly geometry = new THREE.BufferGeometry();
-  private particles!: THREE.Points;
+  private readonly points: THREE.Points;
+
+  private readonly positions: Float32Array;
+  private readonly data: Float32Array;
+
+  private readonly positionAttribute: THREE.BufferAttribute;
+  private readonly dataAttribute: THREE.BufferAttribute;
 
   constructor(params: ParticleRendererParams) {
-    this.params = params;
+    const parent = "parent" in params ? params.parent : params.scene;
+    this.params = {
+      ...params,
+      parent,
+      frustumCulled: params.frustumCulled ?? false,
+      disposeMaterial: params.disposeMaterial ?? false,
+    };
 
-    const positions = new Float32Array(this.params.maxParticles * 3);
-    const data = new Float32Array(this.params.maxParticles * 2);
+    this.positions = new Float32Array(this.params.maxParticles * 3);
+    this.data = new Float32Array(this.params.maxParticles * 2);
 
-    this.geometry.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(positions, 3)
+    this.positionAttribute = new THREE.Float32BufferAttribute(
+      this.positions,
+      3
     );
-    this.geometry.setAttribute(
-      "data",
-      new THREE.Float32BufferAttribute(data, 2)
-    );
+    this.positionAttribute.setUsage(THREE.DynamicDrawUsage);
 
-    (this.geometry.attributes.position as THREE.BufferAttribute).setUsage(
-      THREE.DynamicDrawUsage
-    );
-    (this.geometry.attributes.data as THREE.BufferAttribute).setUsage(
-      THREE.DynamicDrawUsage
-    );
+    this.dataAttribute = new THREE.Float32BufferAttribute(this.data, 2);
+    this.dataAttribute.setUsage(THREE.DynamicDrawUsage);
 
-    this.particles = new THREE.Points(this.geometry, this.params.material);
-    // The frustum culling depends on the bounding box/sphere of the particles (i.e the geometry's)
-    this.particles.frustumCulled = this.params.frustumCulled;
-    this.params.scene.add(this.particles);
+    this.geometry.setAttribute("position", this.positionAttribute);
+    this.geometry.setAttribute("data", this.dataAttribute);
+    this.geometry.setDrawRange(0, 0);
+
+    this.points = new THREE.Points(this.geometry, this.params.material);
+    this.points.frustumCulled = this.params.frustumCulled;
+    this.params.parent.add(this.points);
   }
 
-  public updateFromParticles(particles: Particle[]) {
-    for (let i = 0; i < particles.length; i++) {
+  public get object3d(): THREE.Points {
+    return this.points;
+  }
+
+  public updateFromParticles(particles: ReadonlyArray<Particle>) {
+    const count = Math.min(particles.length, this.params.maxParticles);
+
+    for (let i = 0; i < count; i++) {
       const p = particles[i];
-      this.geometry.attributes.position.setXYZ(
-        i,
-        p.position.x,
-        p.position.y,
-        p.position.z
-      );
-      this.geometry.attributes.data.setXY(i, p.life / p.maxLife, p.id);
+
+      const i3 = i * 3;
+      this.positions[i3 + 0] = p.position.x;
+      this.positions[i3 + 1] = p.position.y;
+      this.positions[i3 + 2] = p.position.z;
+
+      const i2 = i * 2;
+      this.data[i2 + 0] = p.maxLife > 0 ? p.life / p.maxLife : 1;
+      this.data[i2 + 1] = p.id;
     }
 
-    this.geometry.attributes.position.needsUpdate = true;
-    this.geometry.attributes.data.needsUpdate = true;
+    this.positionAttribute.needsUpdate = true;
+    this.dataAttribute.needsUpdate = true;
 
-    this.geometry.setDrawRange(0, particles.length);
+    this.geometry.setDrawRange(0, count);
   }
 
   public dispose() {
-    this.params.scene.remove(this.particles);
+    this.params.parent.remove(this.points);
     this.geometry.dispose();
-    this.params.material.dispose();
-    this.params.material.userData.isDisposed = true;
+
+    if (this.params.disposeMaterial) {
+      this.params.material.dispose();
+    }
   }
 }
