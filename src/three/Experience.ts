@@ -20,6 +20,11 @@ export class Experience extends Engine {
     this.createTemplate();
   }
 
+  public override destroy() {
+    super.destroy();
+    Experience.instance = null;
+  }
+
   private createTemplate() {
     const mesh = new THREE.Mesh(
       new THREE.BoxGeometry(1, 1, 1),

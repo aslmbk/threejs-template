@@ -6,8 +6,9 @@ type StatsType = "1" | "2";
 export class Stats {
   private statsJS: StatsJS;
   private statsGL: StatsGL;
-  private active = true;
+  private active = false;
   private type: StatsType = "1";
+  private mountedType: StatsType | null = null;
 
   constructor() {
     this.statsJS = new StatsJS();
@@ -39,19 +40,26 @@ export class Stats {
   public activate(type: StatsType = "1") {
     this.active = true;
     this.type = type;
-    if (this.type === "1") {
-      document.body.appendChild(this.statsJS.dom);
-    } else {
-      document.body.appendChild(this.statsGL.dom);
+
+    if (this.mountedType && this.mountedType !== type) {
+      if (this.mountedType === "1") {
+        this.statsJS.dom.remove();
+      } else {
+        this.statsGL.dom.remove();
+      }
     }
+
+    const dom = this.type === "1" ? this.statsJS.dom : this.statsGL.dom;
+    if (!dom.isConnected) {
+      document.body.appendChild(dom);
+    }
+    this.mountedType = this.type;
   }
 
   public deactivate() {
     this.active = false;
-    if (this.type === "1") {
-      document.body.removeChild(this.statsJS.dom);
-    } else {
-      document.body.removeChild(this.statsGL.dom);
-    }
+    this.statsJS.dom.remove();
+    this.statsGL.dom.remove();
+    this.mountedType = null;
   }
 }

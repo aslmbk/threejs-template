@@ -40,4 +40,9 @@ export class Viewport {
       pixelRatio: this.pixelRatio,
     });
   }
+
+  public destroy() {
+    window.removeEventListener("resize", this.onResizeCb);
+    this.events.off("change");
+  }
 }

@@ -1,12 +1,12 @@
 import { Events } from "../lib";
-import { Timer } from "three/addons/misc/Timer.js";
+import * as THREE from "three";
 
 export type TimeEventArgs = {
   delta: number;
   elapsed: number;
 };
 
-export class Time extends Timer {
+export class Time extends THREE.Timer {
   public readonly events = new Events<{
     tick: TimeEventArgs;
   }>();
@@ -44,5 +44,10 @@ export class Time extends Timer {
     });
 
     this.animationFrameId = requestAnimationFrame(() => this.tick());
+  }
+
+  public destroy() {
+    this.stop();
+    this.events.off("tick");
   }
 }

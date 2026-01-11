@@ -32,6 +32,7 @@ export class Engine {
   public readonly helpers!: Helpers;
 
   private autoRender: boolean;
+  private destroyed = false;
 
   constructor({ domElement, autoRender = true }: EngineOptions) {
     this.domElement = domElement;
@@ -92,5 +93,47 @@ export class Engine {
         this.cursor.resize(width, height);
       }
     );
+  }
+
+  private disposeMaterial(material: THREE.Material) {
+    for (const key in material) {
+      const value = material[key as keyof typeof material];
+      if (value && value instanceof THREE.Texture) {
+        value.dispose();
+      }
+    }
+    material.dispose();
+  }
+
+  public destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
+
+    this.time.destroy();
+    this.viewport.destroy();
+    this.cursor.destroy();
+    this.inputs.destroy();
+    this.stats.deactivate();
+    this.debug.deactivate();
+    this.debug.dispose();
+    this.controls.dispose();
+
+    this.scene.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        object.geometry?.dispose();
+        if (Array.isArray(object.material)) {
+          object.material.forEach((m) => {
+            if (!m) return;
+            this.disposeMaterial(m);
+          });
+        } else if (object.material) {
+          this.disposeMaterial(object.material);
+        }
+      }
+    });
+
+    this.renderer.setAnimationLoop(null);
+    this.renderer.dispose();
+    this.renderer.domElement.remove();
   }
 }

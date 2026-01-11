@@ -14,8 +14,8 @@ export class Inputs {
   }>();
 
   constructor() {
-    window.addEventListener("keydown", this.onKeyDown.bind(this));
-    window.addEventListener("keyup", this.onKeyUp.bind(this));
+    window.addEventListener("keydown", this.onKeyDown);
+    window.addEventListener("keyup", this.onKeyUp);
   }
 
   private onKeyDown = (event: KeyboardEvent) => {
@@ -29,4 +29,12 @@ export class Inputs {
     this.keys[event.code] = false;
     this.events.trigger("keyup", { event, keys: this.keys });
   };
+
+  public destroy() {
+    window.removeEventListener("keydown", this.onKeyDown);
+    window.removeEventListener("keyup", this.onKeyUp);
+
+    this.events.off("keydown");
+    this.events.off("keyup");
+  }
 }

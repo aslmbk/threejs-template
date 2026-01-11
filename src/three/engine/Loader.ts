@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { type GLTF, GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
-import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
+import { HDRLoader } from "three/addons/loaders/HDRLoader.js";
 import { EXRLoader } from "three/addons/loaders/EXRLoader.js";
 import { TextureAtlas, Events } from "../lib";
 
@@ -27,7 +27,7 @@ type GLTFLoaderOptions = LoaderOptions<GLTF>;
 type TextureLoaderOptions = LoaderOptions<THREE.Texture>;
 type CubeTextureLoaderOptions = LoaderOptions<THREE.CubeTexture, string[]> &
   EnvironmentOptions;
-type RGBE_EXRLoaderOptions = LoaderOptions<THREE.DataTexture> &
+type HDR_EXRLoaderOptions = LoaderOptions<THREE.DataTexture> &
   EnvironmentOptions;
 
 type AsyncOmitter<T> = Omit<T, "onLoad" | "onError">;
@@ -45,7 +45,7 @@ export class Loader {
   private textureLoader: THREE.TextureLoader;
   private textureAtlas: TextureAtlas;
   private cubeTextureLoader: THREE.CubeTextureLoader;
-  private rgbeLoader: RGBELoader;
+  private hdrLoader: HDRLoader;
   private exrLoader: EXRLoader;
 
   public readonly events = new Events<{
@@ -78,7 +78,7 @@ export class Loader {
     this.textureLoader = new THREE.TextureLoader(this.loadingManager);
     this.textureAtlas = new TextureAtlas(this.textureLoader);
     this.cubeTextureLoader = new THREE.CubeTextureLoader(this.loadingManager);
-    this.rgbeLoader = new RGBELoader(this.loadingManager);
+    this.hdrLoader = new HDRLoader(this.loadingManager);
     this.exrLoader = new EXRLoader(this.loadingManager);
   }
 
@@ -162,8 +162,8 @@ export class Loader {
     return texture;
   }
 
-  public loadRGBE(options: RGBE_EXRLoaderOptions) {
-    return this.rgbeLoader.load(
+  public loadHDR(options: HDR_EXRLoaderOptions) {
+    return this.hdrLoader.load(
       options.url,
       (texture) => {
         texture.mapping = THREE.EquirectangularReflectionMapping;
@@ -175,8 +175,8 @@ export class Loader {
     );
   }
 
-  public async loadRGBEAsync(options: AsyncOmitter<RGBE_EXRLoaderOptions>) {
-    const texture = await this.rgbeLoader.loadAsync(
+  public async loadHDRAsync(options: AsyncOmitter<HDR_EXRLoaderOptions>) {
+    const texture = await this.hdrLoader.loadAsync(
       options.url,
       options.onProgress
     );
@@ -185,7 +185,7 @@ export class Loader {
     return texture;
   }
 
-  public loadEXR(options: RGBE_EXRLoaderOptions) {
+  public loadEXR(options: HDR_EXRLoaderOptions) {
     return this.exrLoader.load(
       options.url,
       (texture) => {
@@ -198,7 +198,7 @@ export class Loader {
     );
   }
 
-  public async loadEXRAsync(options: AsyncOmitter<RGBE_EXRLoaderOptions>) {
+  public async loadEXRAsync(options: AsyncOmitter<HDR_EXRLoaderOptions>) {
     const texture = await this.exrLoader.loadAsync(
       options.url,
       options.onProgress

@@ -1,14 +1,23 @@
-import "./App.css";
 import { useEffect, useRef } from "react";
 import { Experience } from "./three/Experience";
+import "./App.css";
 
-export const App = () => {
-  const containerRef = useRef<HTMLDivElement>(null);
+export default function App() {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const experienceRef = useRef<Experience | null>(null);
 
   useEffect(() => {
-    if (!containerRef.current) return;
-    new Experience(containerRef.current);
+    const container = containerRef.current;
+    if (!container) return;
+
+    const experience = new Experience(container);
+    experienceRef.current = experience;
+
+    return () => {
+      experience.destroy();
+      experienceRef.current = null;
+    };
   }, []);
 
   return <div className="App" ref={containerRef} />;
-};
+}
