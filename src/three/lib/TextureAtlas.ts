@@ -1,5 +1,15 @@
 import * as THREE from "three";
 
+type AtlasImageSource = CanvasImageSource & { width: number; height: number };
+
+function isAtlasImageSource(image: unknown): image is AtlasImageSource {
+  if (typeof image !== "object" || image === null) return false;
+  if (!("width" in image) || !("height" in image)) return false;
+
+  const { width, height } = image as { width?: unknown; height?: unknown };
+  return typeof width === "number" && typeof height === "number";
+}
+
 export class TextureAtlas {
   private loader: THREE.TextureLoader;
 
@@ -14,8 +24,19 @@ export class TextureAtlas {
       })
     );
 
-    const width = loadedTextures[0].image.width;
-    const height = loadedTextures[0].image.height;
+    if (loadedTextures.length === 0) {
+      throw new Error("TextureAtlas.load: expected at least one texture path");
+    }
+
+    const firstImage = loadedTextures[0].image;
+    if (!isAtlasImageSource(firstImage)) {
+      throw new Error(
+        "TextureAtlas.load: texture.image must be a CanvasImageSource with numeric width/height"
+      );
+    }
+
+    const width = firstImage.width;
+    const height = firstImage.height;
     const depth = loadedTextures.length;
 
     const size = width * height;
@@ -23,6 +44,17 @@ export class TextureAtlas {
 
     for (let i = 0; i < depth; i++) {
       const img = loadedTextures[i].image;
+      if (!isAtlasImageSource(img)) {
+        throw new Error(
+          `TextureAtlas.load: texture at index ${i} has an unsupported image type`
+        );
+      }
+      if (img.width !== width || img.height !== height) {
+        throw new Error(
+          `TextureAtlas.load: texture at index ${i} has mismatched dimensions (${img.width}x${img.height}), expected ${width}x${height}`
+        );
+      }
+
       const canvas = document.createElement("canvas");
       canvas.width = width;
       canvas.height = height;
