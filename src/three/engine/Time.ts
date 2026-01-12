@@ -16,14 +16,13 @@ export class Time extends THREE.Timer {
 
   constructor() {
     super();
-    this.start();
   }
 
   public start() {
-    if (!this.running) {
-      this.running = true;
-      this.tick();
-    }
+    if (this.running) return;
+    this.running = true;
+    this.reset();
+    this.animationFrameId = requestAnimationFrame(() => this.tick());
   }
 
   public stop() {

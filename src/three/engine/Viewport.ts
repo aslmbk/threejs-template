@@ -16,20 +16,32 @@ export class Viewport {
   public readonly events = new Events<{
     change: ViewportEventArgs;
   }>();
-  private onResizeCb = this.onResize.bind(this);
+  private resizeObserver: ResizeObserver | null = null;
+  private resizeRafId: number | null = null;
 
   constructor(domElement: HTMLElement) {
     this.domElement = domElement;
-    window.addEventListener("resize", this.onResizeCb);
-    setTimeout(this.onResizeCb, 1);
+    this.measure();
+
+    this.resizeObserver = new ResizeObserver(() => this.scheduleResize());
+    this.resizeObserver.observe(this.domElement);
+    window.addEventListener("resize", this.scheduleResize);
   }
 
   private measure() {
     this.width = this.domElement.clientWidth;
     this.height = this.domElement.clientHeight;
-    this.ratio = this.width / this.height;
+    this.ratio = this.height === 0 ? 1 : this.width / this.height;
     this.pixelRatio = Math.min(window.devicePixelRatio, 2);
   }
+
+  private scheduleResize = () => {
+    if (this.resizeRafId !== null) return;
+    this.resizeRafId = requestAnimationFrame(() => {
+      this.resizeRafId = null;
+      this.onResize();
+    });
+  };
 
   private onResize() {
     this.measure();
@@ -41,8 +53,18 @@ export class Viewport {
     });
   }
 
+  public refresh() {
+    this.onResize();
+  }
+
   public destroy() {
-    window.removeEventListener("resize", this.onResizeCb);
+    window.removeEventListener("resize", this.scheduleResize);
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
+    if (this.resizeRafId !== null) {
+      cancelAnimationFrame(this.resizeRafId);
+      this.resizeRafId = null;
+    }
     this.events.off("change");
   }
 }

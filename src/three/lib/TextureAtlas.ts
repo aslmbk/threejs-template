@@ -42,8 +42,17 @@ export class TextureAtlas {
     const size = width * height;
     const data = new Uint8Array(4 * size * depth);
 
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      throw new Error("TextureAtlas.load: failed to get 2D canvas context");
+    }
+
     for (let i = 0; i < depth; i++) {
-      const img = loadedTextures[i].image;
+      const texture = loadedTextures[i];
+      const img = texture.image;
       if (!isAtlasImageSource(img)) {
         throw new Error(
           `TextureAtlas.load: texture at index ${i} has an unsupported image type`
@@ -55,27 +64,14 @@ export class TextureAtlas {
         );
       }
 
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const context = canvas.getContext("2d")!;
-      context.drawImage(img, 0, 0);
+      context.setTransform(1, 0, 0, -1, 0, height);
+      context.drawImage(img, 0, 0, width, height);
+      context.setTransform(1, 0, 0, 1, 0, 0);
+
       const imgData = context.getImageData(0, 0, width, height).data;
+      data.set(imgData, i * size * 4);
 
-      // data.set(imgData, i * size * 4);
-
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const srcY = height - 1 - y;
-          const srcPos = (srcY * width + x) * 4;
-          const dstPos = (i * size + y * width + x) * 4;
-
-          data[dstPos] = imgData[srcPos];
-          data[dstPos + 1] = imgData[srcPos + 1];
-          data[dstPos + 2] = imgData[srcPos + 2];
-          data[dstPos + 3] = imgData[srcPos + 3];
-        }
-      }
+      texture.dispose();
     }
 
     const texture = new THREE.DataArrayTexture(data, width, height, depth);

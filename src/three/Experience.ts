@@ -1,28 +1,18 @@
-import { Engine } from "./engine";
+import { Engine, type EngineOptions } from "./engine/Engine";
 import { DebugController } from "./DebugController";
 import { Config } from "./Config";
 import * as THREE from "three";
 
 export class Experience extends Engine {
-  private static instance: Experience | null = null;
+  public readonly config: Config;
+  public readonly debugController: DebugController;
 
-  public readonly config!: Config;
-  public readonly debugController!: DebugController;
-
-  constructor(domElement: HTMLElement) {
-    if (Experience.instance) return Experience.instance;
-    super({ domElement });
-    Experience.instance = this;
-
+  constructor(options: EngineOptions) {
+    super(options);
     this.config = new Config();
     this.debugController = new DebugController();
 
     this.createTemplate();
-  }
-
-  public override destroy() {
-    super.destroy();
-    Experience.instance = null;
   }
 
   private createTemplate() {
@@ -37,4 +27,8 @@ export class Experience extends Engine {
       mesh.rotation.y += delta;
     });
   }
+}
+
+if (import.meta.hot) {
+  Experience.rebindSingletonPrototype();
 }

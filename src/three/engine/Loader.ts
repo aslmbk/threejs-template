@@ -42,6 +42,7 @@ export class Loader {
 
   private loadingManager: THREE.LoadingManager;
   private gltfLoader: GLTFLoader;
+  private dracoLoader: DRACOLoader;
   private textureLoader: THREE.TextureLoader;
   private textureAtlas: TextureAtlas;
   private cubeTextureLoader: THREE.CubeTextureLoader;
@@ -71,9 +72,9 @@ export class Loader {
     };
 
     this.gltfLoader = new GLTFLoader(this.loadingManager);
-    const dracoLoader = new DRACOLoader(this.loadingManager);
-    dracoLoader.setDecoderPath("/draco/");
-    this.gltfLoader.setDRACOLoader(dracoLoader);
+    this.dracoLoader = new DRACOLoader(this.loadingManager);
+    this.dracoLoader.setDecoderPath("/draco/");
+    this.gltfLoader.setDRACOLoader(this.dracoLoader);
 
     this.textureLoader = new THREE.TextureLoader(this.loadingManager);
     this.textureAtlas = new TextureAtlas(this.textureLoader);
@@ -87,7 +88,7 @@ export class Loader {
     if (options.setEnvironment && options.environmentMap) {
       this.scene.environment = options.environmentMap;
     }
-    if (options.environmentIntensity) {
+    if (options.environmentIntensity !== void 0) {
       this.scene.environmentIntensity = options.environmentIntensity;
     }
     if (options.environmentRotation) {
@@ -96,10 +97,10 @@ export class Loader {
     if (options.setBackground && options.environmentMap) {
       this.scene.background = options.environmentMap;
     }
-    if (options.backgroundBlurriness) {
+    if (options.backgroundBlurriness !== void 0) {
       this.scene.backgroundBlurriness = options.backgroundBlurriness;
     }
-    if (options.backgroundIntensity) {
+    if (options.backgroundIntensity !== void 0) {
       this.scene.backgroundIntensity = options.backgroundIntensity;
     }
     if (options.backgroundRotation) {
@@ -206,5 +207,13 @@ export class Loader {
     texture.mapping = THREE.EquirectangularReflectionMapping;
     this.setEnvironment({ ...options, environmentMap: texture });
     return texture;
+  }
+
+  public destroy() {
+    this.events.off("start");
+    this.events.off("progress");
+    this.events.off("load");
+    this.events.off("error");
+    this.dracoLoader.dispose();
   }
 }

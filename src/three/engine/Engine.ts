@@ -10,26 +10,91 @@ import { Cursor } from "./Cursor";
 import { Inputs } from "./Inputs";
 import { Rays } from "./Rays";
 
+const ENGINE_SINGLETON_STORE_KEY = "__threejsTemplateEngineSingletonStore__";
+
+type SingletonStore = Map<string, Engine>;
+
+const singletonStore: SingletonStore =
+  (import.meta.hot?.data?.[ENGINE_SINGLETON_STORE_KEY] as
+    | SingletonStore
+    | undefined) ?? new Map<string, Engine>();
+
+if (import.meta.hot) {
+  import.meta.hot.dispose((data) => {
+    data[ENGINE_SINGLETON_STORE_KEY] = singletonStore;
+  });
+}
+
 export type EngineOptions = {
   domElement: HTMLElement;
   autoRender?: boolean;
 };
 
 export class Engine {
-  public readonly domElement!: HTMLElement;
-  public readonly debug!: Debug;
-  public readonly time!: Time;
-  public readonly viewport!: Viewport;
-  public readonly cursor!: Cursor;
-  public readonly inputs!: Inputs;
-  public readonly scene!: THREE.Scene;
-  public readonly camera!: THREE.PerspectiveCamera;
-  public readonly renderer!: THREE.WebGLRenderer;
-  public readonly controls!: OrbitControls;
-  public readonly rays!: Rays;
-  public readonly loader!: Loader;
-  public readonly stats!: Stats;
-  public readonly helpers!: Helpers;
+  public static getInstance<T extends typeof Engine>(
+    this: T,
+    domElement?: HTMLElement,
+    options?: Omit<EngineOptions, "domElement">
+  ): InstanceType<T> {
+    const key = this.name;
+    const existing = singletonStore.get(key) as InstanceType<T> | undefined;
+
+    if (existing) {
+      if (Object.getPrototypeOf(existing) !== this.prototype) {
+        Object.setPrototypeOf(existing, this.prototype);
+      }
+
+      if (domElement && domElement !== existing.domElement) {
+        throw new Error(
+          `${this.name} already initialized with a different domElement`
+        );
+      }
+      return existing;
+    }
+
+    if (!domElement) {
+      throw new Error(
+        `${this.name} is not initialized yet. Pass domElement on the first call.`
+      );
+    }
+
+    const instance = new this({
+      domElement,
+      ...(options ?? {}),
+    }) as InstanceType<T>;
+
+    singletonStore.set(key, instance);
+    return instance;
+  }
+
+  public static isInitialized<T extends typeof Engine>(this: T): boolean {
+    return singletonStore.has(this.name);
+  }
+
+  public static rebindSingletonPrototype<T extends typeof Engine>(
+    this: T
+  ): void {
+    const existing = singletonStore.get(this.name);
+    if (!existing) return;
+    if (Object.getPrototypeOf(existing) !== this.prototype) {
+      Object.setPrototypeOf(existing, this.prototype);
+    }
+  }
+
+  public readonly domElement: HTMLElement;
+  public readonly debug: Debug;
+  public readonly time: Time;
+  public readonly viewport: Viewport;
+  public readonly cursor: Cursor;
+  public readonly inputs: Inputs;
+  public readonly scene: THREE.Scene;
+  public readonly camera: THREE.PerspectiveCamera;
+  public readonly renderer: THREE.WebGLRenderer;
+  public readonly controls: OrbitControls;
+  public readonly rays: Rays;
+  public readonly loader: Loader;
+  public readonly stats: Stats;
+  public readonly helpers: Helpers;
 
   private autoRender: boolean;
   private destroyed = false;
@@ -67,6 +132,8 @@ export class Engine {
     this.domElement.appendChild(this.renderer.domElement);
 
     this.registerEvents();
+    this.viewport.refresh();
+    this.time.start();
   }
 
   private registerEvents() {
@@ -113,27 +180,41 @@ export class Engine {
     this.viewport.destroy();
     this.cursor.destroy();
     this.inputs.destroy();
+    this.loader.destroy();
     this.stats.deactivate();
     this.debug.deactivate();
     this.debug.dispose();
     this.controls.dispose();
 
     this.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
-        object.geometry?.dispose();
-        if (Array.isArray(object.material)) {
-          object.material.forEach((m) => {
-            if (!m) return;
-            this.disposeMaterial(m);
-          });
-        } else if (object.material) {
-          this.disposeMaterial(object.material);
-        }
+      const anyObject = object as unknown as {
+        geometry?: { dispose?: () => void };
+        material?: THREE.Material | THREE.Material[];
+      };
+
+      anyObject.geometry?.dispose?.();
+
+      const material = anyObject.material;
+      if (!material) return;
+
+      if (Array.isArray(material)) {
+        material.forEach((m) => {
+          if (!m) return;
+          this.disposeMaterial(m);
+        });
+      } else {
+        this.disposeMaterial(material);
       }
     });
 
     this.renderer.setAnimationLoop(null);
     this.renderer.dispose();
     this.renderer.domElement.remove();
+
+    const key = (this.constructor as typeof Engine).name;
+    const entry = singletonStore.get(key);
+    if (entry === this) {
+      singletonStore.delete(key);
+    }
   }
 }

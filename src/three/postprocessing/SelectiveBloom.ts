@@ -10,6 +10,8 @@ export class SelectiveBloom {
   public bloomLayer: THREE.Layers;
   public darkMaterial: THREE.MeshBasicMaterial;
   public materials: { [uuid: string]: THREE.Material | THREE.Material[] };
+  private readonly darkenedObjects: THREE.Object3D[] = [];
+  private readonly blackColor = new THREE.Color(0x000000);
 
   private renderer: THREE.WebGLRenderer;
   private scene: THREE.Scene;
@@ -96,10 +98,14 @@ export class SelectiveBloom {
 
   public render(): void {
     const clearColor = this.renderScene.clearColor;
+    this.darkenedObjects.splice(0, this.darkenedObjects.length);
     this.scene.traverse((obj) => this.darkenNonBloomed(obj));
-    this.renderScene.clearColor = new THREE.Color(0x000000);
+    this.renderScene.clearColor = this.blackColor;
     this.bloomComposer.render();
-    this.scene.traverse((obj) => this.restoreMaterial(obj));
+    for (const obj of this.darkenedObjects) {
+      this.restoreMaterial(obj);
+    }
+    this.darkenedObjects.splice(0, this.darkenedObjects.length);
     this.renderScene.clearColor = clearColor;
     this.finalComposer.render();
   }
@@ -109,6 +115,7 @@ export class SelectiveBloom {
     if ((o.isMesh || o.isLine) && !this.bloomLayer.test(obj.layers)) {
       this.materials[obj.uuid] = o.material;
       o.material = this.darkMaterial;
+      this.darkenedObjects.push(obj);
     }
   }
 

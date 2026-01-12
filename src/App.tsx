@@ -10,7 +10,7 @@ export default function App() {
     const container = containerRef.current;
     if (!container) return;
 
-    const experience = new Experience(container);
+    const experience = Experience.getInstance(container);
     experienceRef.current = experience;
 
     return () => {
