@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import type { Config } from "../Config";
 import { Debug } from "./Debug";
 import { Time } from "./Time";
 import { Viewport } from "./Viewport";
@@ -10,79 +11,15 @@ import { Cursor } from "./Cursor";
 import { Inputs } from "./Inputs";
 import { Rays } from "./Rays";
 
-const ENGINE_SINGLETON_STORE_KEY = "__threejsTemplateEngineSingletonStore__";
-
-type SingletonStore = Map<string, Engine>;
-
-const singletonStore: SingletonStore =
-  (import.meta.hot?.data?.[ENGINE_SINGLETON_STORE_KEY] as
-    | SingletonStore
-    | undefined) ?? new Map<string, Engine>();
-
-if (import.meta.hot) {
-  import.meta.hot.dispose((data) => {
-    data[ENGINE_SINGLETON_STORE_KEY] = singletonStore;
-  });
-}
-
 export type EngineOptions = {
   domElement: HTMLElement;
+  config: Config;
   autoRender?: boolean;
 };
 
 export class Engine {
-  public static getInstance<T extends typeof Engine>(
-    this: T,
-    domElement?: HTMLElement,
-    options?: Omit<EngineOptions, "domElement">
-  ): InstanceType<T> {
-    const key = this.name;
-    const existing = singletonStore.get(key) as InstanceType<T> | undefined;
-
-    if (existing) {
-      if (Object.getPrototypeOf(existing) !== this.prototype) {
-        Object.setPrototypeOf(existing, this.prototype);
-      }
-
-      if (domElement && domElement !== existing.domElement) {
-        throw new Error(
-          `${this.name} already initialized with a different domElement`
-        );
-      }
-      return existing;
-    }
-
-    if (!domElement) {
-      throw new Error(
-        `${this.name} is not initialized yet. Pass domElement on the first call.`
-      );
-    }
-
-    const instance = new this({
-      domElement,
-      ...(options ?? {}),
-    }) as InstanceType<T>;
-
-    singletonStore.set(key, instance);
-    return instance;
-  }
-
-  public static isInitialized<T extends typeof Engine>(this: T): boolean {
-    return singletonStore.has(this.name);
-  }
-
-  public static rebindSingletonPrototype<T extends typeof Engine>(
-    this: T
-  ): void {
-    const existing = singletonStore.get(this.name);
-    if (!existing) return;
-    if (Object.getPrototypeOf(existing) !== this.prototype) {
-      Object.setPrototypeOf(existing, this.prototype);
-    }
-  }
-
   public readonly domElement: HTMLElement;
-  public readonly debug: Debug;
+  public readonly debug: Debug | undefined;
   public readonly time: Time;
   public readonly viewport: Viewport;
   public readonly cursor: Cursor;
@@ -93,38 +30,60 @@ export class Engine {
   public readonly controls: OrbitControls;
   public readonly rays: Rays;
   public readonly loader: Loader;
-  public readonly stats: Stats;
-  public readonly helpers: Helpers;
+  public readonly stats: Stats | undefined;
+  public readonly helpers: Helpers | undefined;
 
   private autoRender: boolean;
   private destroyed = false;
 
-  constructor({ domElement, autoRender = true }: EngineOptions) {
+  private readonly onTickControls = () => {
+    this.controls.update();
+  };
+
+  private readonly onTickRender = () => {
+    if (this.autoRender) {
+      this.renderer.render(this.scene, this.camera);
+    }
+  };
+
+  private readonly onTickStats = () => {
+    this.stats?.update();
+  };
+
+  constructor({ domElement, config, autoRender = true }: EngineOptions) {
     this.domElement = domElement;
     this.autoRender = autoRender;
 
-    this.debug = new Debug();
+    if (config.debug) {
+      this.debug = new Debug(true);
+      this.stats = new Stats(true);
+    } else {
+      this.debug = undefined;
+      this.stats = undefined;
+    }
+
     this.time = new Time();
-    this.viewport = new Viewport(this.domElement);
+    this.viewport = new Viewport(this.domElement, {
+      maxPixelRatio: config.maxDevicePixelRatio,
+    });
     this.cursor = new Cursor(
       this.domElement,
       this.viewport.width,
-      this.viewport.height
+      this.viewport.height,
     );
     this.inputs = new Inputs();
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(
-      75,
+      config.cameraFov,
       this.viewport.ratio,
-      0.1,
-      1000
+      config.cameraNear,
+      config.cameraFar,
     );
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer = new THREE.WebGLRenderer({ antialias: config.antialias });
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.rays = new Rays(this.camera);
-    this.loader = new Loader(this.scene);
-    this.stats = new Stats();
-    this.helpers = new Helpers(this.scene);
+    this.loader = new Loader();
+    this.helpers = config.debug ? new Helpers(this.scene) : undefined;
 
     this.scene.add(this.camera);
     this.camera.position.set(0, 0, 6);
@@ -137,19 +96,9 @@ export class Engine {
   }
 
   private registerEvents() {
-    this.time.events.on(
-      "tick",
-      () => {
-        if (this.autoRender) {
-          this.renderer.render(this.scene, this.camera);
-        }
-      },
-      5
-    );
-    this.time.events.on("tick", () => {
-      this.controls.update();
-      this.stats.update();
-    });
+    this.time.events.on("tick", this.onTickControls, 1);
+    this.time.events.on("tick", this.onTickRender, 5);
+    this.time.events.on("tick", this.onTickStats, 5);
     this.viewport.events.on(
       "change",
       ({ width, height, ratio, pixelRatio }) => {
@@ -158,7 +107,7 @@ export class Engine {
         this.renderer.setSize(width, height);
         this.renderer.setPixelRatio(pixelRatio);
         this.cursor.resize(width, height);
-      }
+      },
     );
   }
 
@@ -181,9 +130,11 @@ export class Engine {
     this.cursor.destroy();
     this.inputs.destroy();
     this.loader.destroy();
-    this.stats.deactivate();
-    this.debug.deactivate();
-    this.debug.dispose();
+    this.rays.destroy();
+    this.stats?.deactivate();
+    this.stats?.destroy();
+    this.debug?.deactivate();
+    this.debug?.dispose();
     this.controls.dispose();
 
     this.scene.traverse((object) => {
@@ -210,11 +161,5 @@ export class Engine {
     this.renderer.setAnimationLoop(null);
     this.renderer.dispose();
     this.renderer.domElement.remove();
-
-    const key = (this.constructor as typeof Engine).name;
-    const entry = singletonStore.get(key);
-    if (entry === this) {
-      singletonStore.delete(key);
-    }
   }
 }

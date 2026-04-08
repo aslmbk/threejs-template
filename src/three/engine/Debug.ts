@@ -3,14 +3,10 @@ import { Pane } from "tweakpane";
 export class Debug {
   private _pane: Pane | null = null;
 
-  constructor() {
-    if (this.isDebugMode) {
+  constructor(debugEnabled: boolean) {
+    if (debugEnabled) {
       this.activate();
     }
-  }
-
-  private get isDebugMode() {
-    return location.hash.indexOf("debug") !== -1;
   }
 
   private ensurePane() {

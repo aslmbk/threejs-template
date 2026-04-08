@@ -7,8 +7,13 @@ export type ViewportEventArgs = {
   pixelRatio: number;
 };
 
+export type ViewportOptions = {
+  maxPixelRatio?: number;
+};
+
 export class Viewport {
   private domElement: HTMLElement;
+  private readonly maxPixelRatio: number;
   public width = 0;
   public height = 0;
   public ratio = 0;
@@ -19,7 +24,8 @@ export class Viewport {
   private resizeObserver: ResizeObserver | null = null;
   private resizeRafId: number | null = null;
 
-  constructor(domElement: HTMLElement) {
+  constructor(domElement: HTMLElement, options?: ViewportOptions) {
+    this.maxPixelRatio = options?.maxPixelRatio ?? 2;
     this.domElement = domElement;
     this.measure();
 
@@ -32,7 +38,7 @@ export class Viewport {
     this.width = this.domElement.clientWidth;
     this.height = this.domElement.clientHeight;
     this.ratio = this.height === 0 ? 1 : this.width / this.height;
-    this.pixelRatio = Math.min(window.devicePixelRatio, 2);
+    this.pixelRatio = Math.min(window.devicePixelRatio, this.maxPixelRatio);
   }
 
   private scheduleResize = () => {

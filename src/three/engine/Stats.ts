@@ -8,15 +8,12 @@ export class Stats {
   private statsGL: StatsGL | null = null;
   private active = false;
   private type: StatsType = "js";
+  private disposed = false;
 
-  constructor() {
-    if (this.isDebugMode) {
+  constructor(debugEnabled: boolean) {
+    if (debugEnabled) {
       this.activate();
     }
-  }
-
-  private get isDebugMode() {
-    return location.hash.indexOf("debug") !== -1;
   }
 
   private ensureStatsJS() {
@@ -35,7 +32,7 @@ export class Stats {
   }
 
   public update() {
-    if (!this.active) return;
+    if (this.disposed || !this.active) return;
     if (this.type === "js") {
       this.ensureStatsJS().update();
     } else {
@@ -64,5 +61,13 @@ export class Stats {
     this.active = false;
     this.statsJS?.dom.remove();
     this.statsGL?.dom.remove();
+  }
+
+  public destroy() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.deactivate();
+    this.statsJS = null;
+    this.statsGL = null;
   }
 }

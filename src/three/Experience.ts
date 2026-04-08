@@ -1,31 +1,73 @@
-import { Engine, type EngineOptions } from "./engine/Engine";
+import { Engine } from "./engine/Engine";
 import { DebugController } from "./DebugController";
 import { Config } from "./Config";
-import * as THREE from "three";
+import { DemoScene } from "./world/DemoScene";
+import type { SceneModule } from "./world/SceneModule";
 
-export class Experience extends Engine {
+const SINGLETON_KEY = "__experienceSingleton__";
+
+let instance: Experience | null =
+  (import.meta.hot?.data?.[SINGLETON_KEY] as Experience | null | undefined) ??
+  null;
+
+if (import.meta.hot) {
+  import.meta.hot.dispose((data) => {
+    data[SINGLETON_KEY] = instance;
+  });
+}
+
+export class Experience {
+  public readonly engine: Engine;
   public readonly config: Config;
   public readonly debugController: DebugController;
+  private readonly modules: SceneModule[] = [];
 
-  constructor(options: EngineOptions) {
-    super(options);
-    this.config = new Config();
-    this.debugController = new DebugController();
+  static getInstance(domElement?: HTMLElement): Experience {
+    if (instance) {
+      if (domElement && domElement !== instance.engine.domElement) {
+        throw new Error(
+          "Experience already initialized with a different domElement"
+        );
+      }
+      return instance;
+    }
 
-    this.createTemplate();
+    if (!domElement) {
+      throw new Error(
+        "Experience is not initialized yet. Pass domElement on the first call."
+      );
+    }
+
+    instance = new Experience(domElement);
+    return instance;
   }
 
-  private createTemplate() {
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(1, 1, 1),
-      new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true })
-    );
-    this.scene.add(mesh);
+  static isInitialized(): boolean {
+    return instance !== null;
+  }
 
-    this.time.events.on("tick", ({ delta }) => {
-      mesh.rotation.x += delta;
-      mesh.rotation.y += delta;
-    });
+  static rebindSingletonPrototype(): void {
+    if (!instance) return;
+    Object.setPrototypeOf(instance, Experience.prototype);
+    Object.setPrototypeOf(instance.engine, Engine.prototype);
+  }
+
+  private constructor(domElement: HTMLElement) {
+    this.config = new Config();
+    this.engine = new Engine({ domElement, config: this.config });
+    this.debugController = new DebugController(this.config, this.engine);
+
+    this.modules.push(new DemoScene(this.engine.scene, this.engine.time));
+  }
+
+  destroy(): void {
+    for (const m of this.modules) {
+      m.destroy();
+    }
+    this.modules.length = 0;
+    this.debugController.destroy();
+    this.engine.destroy();
+    instance = null;
   }
 }
 

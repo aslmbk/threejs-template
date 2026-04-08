@@ -5,17 +5,6 @@ import { HDRLoader } from "three/addons/loaders/HDRLoader.js";
 import { EXRLoader } from "three/addons/loaders/EXRLoader.js";
 import { TextureAtlas, Events } from "../lib";
 
-type EnvironmentOptions = {
-  setEnvironment?: boolean;
-  setBackground?: boolean;
-  environmentMap?: THREE.Texture;
-  environmentIntensity?: number;
-  environmentRotation?: THREE.Euler;
-  backgroundBlurriness?: number;
-  backgroundIntensity?: number;
-  backgroundRotation?: THREE.Euler;
-};
-
 type LoaderOptions<Payload, Url extends string | string[] = string> = {
   url: Url;
   onLoad?: (payload: Payload) => void;
@@ -25,10 +14,8 @@ type LoaderOptions<Payload, Url extends string | string[] = string> = {
 
 type GLTFLoaderOptions = LoaderOptions<GLTF>;
 type TextureLoaderOptions = LoaderOptions<THREE.Texture>;
-type CubeTextureLoaderOptions = LoaderOptions<THREE.CubeTexture, string[]> &
-  EnvironmentOptions;
-type HDR_EXRLoaderOptions = LoaderOptions<THREE.DataTexture> &
-  EnvironmentOptions;
+type CubeTextureLoaderOptions = LoaderOptions<THREE.CubeTexture, string[]>;
+type HDR_EXRLoaderOptions = LoaderOptions<THREE.DataTexture>;
 
 type AsyncOmitter<T> = Omit<T, "onLoad" | "onError">;
 
@@ -38,8 +25,6 @@ export type LoadEventArgs = void;
 export type ErrorEventArgs = { url: string };
 
 export class Loader {
-  public readonly scene: THREE.Scene;
-
   private loadingManager: THREE.LoadingManager;
   private gltfLoader: GLTFLoader;
   private dracoLoader: DRACOLoader;
@@ -56,14 +41,12 @@ export class Loader {
     error: ErrorEventArgs;
   }>();
 
-  constructor(scene: THREE.Scene) {
-    this.scene = scene;
-
+  constructor() {
     this.loadingManager = new THREE.LoadingManager(
       () => this.events.trigger("load"),
       (url, loaded, total) =>
         this.events.trigger("progress", { url, loaded, total }),
-      (url) => this.events.trigger("error", { url })
+      (url) => this.events.trigger("error", { url }),
     );
     const itemStart = this.loadingManager.itemStart.bind(this.loadingManager);
     this.loadingManager.itemStart = (url) => {
@@ -83,31 +66,6 @@ export class Loader {
     this.exrLoader = new EXRLoader(this.loadingManager);
   }
 
-  private setEnvironment(options: EnvironmentOptions) {
-    if (!options.setEnvironment && !options.setBackground) return;
-    if (options.setEnvironment && options.environmentMap) {
-      this.scene.environment = options.environmentMap;
-    }
-    if (options.environmentIntensity !== void 0) {
-      this.scene.environmentIntensity = options.environmentIntensity;
-    }
-    if (options.environmentRotation) {
-      this.scene.environmentRotation = options.environmentRotation;
-    }
-    if (options.setBackground && options.environmentMap) {
-      this.scene.background = options.environmentMap;
-    }
-    if (options.backgroundBlurriness !== void 0) {
-      this.scene.backgroundBlurriness = options.backgroundBlurriness;
-    }
-    if (options.backgroundIntensity !== void 0) {
-      this.scene.backgroundIntensity = options.backgroundIntensity;
-    }
-    if (options.backgroundRotation) {
-      this.scene.backgroundRotation = options.backgroundRotation;
-    }
-  }
-
   public loadGLTF(options: GLTFLoaderOptions) {
     this.gltfLoader.load(
       options.url,
@@ -115,7 +73,7 @@ export class Loader {
         options.onLoad?.(gltf);
       },
       options.onProgress,
-      options.onError
+      options.onError,
     );
   }
 
@@ -128,7 +86,7 @@ export class Loader {
       options.url,
       options.onLoad,
       options.onProgress,
-      options.onError
+      options.onError,
     );
   }
 
@@ -144,23 +102,17 @@ export class Loader {
     return this.cubeTextureLoader.load(
       options.url,
       (texture) => {
-        this.setEnvironment({ ...options, environmentMap: texture });
         options.onLoad?.(texture);
       },
       options.onProgress,
-      options.onError
+      options.onError,
     );
   }
 
   public async loadCubeTextureAsync(
-    options: AsyncOmitter<CubeTextureLoaderOptions>
+    options: AsyncOmitter<CubeTextureLoaderOptions>,
   ) {
-    const texture = await this.cubeTextureLoader.loadAsync(
-      options.url,
-      options.onProgress
-    );
-    this.setEnvironment({ ...options, environmentMap: texture });
-    return texture;
+    return this.cubeTextureLoader.loadAsync(options.url, options.onProgress);
   }
 
   public loadHDR(options: HDR_EXRLoaderOptions) {
@@ -168,21 +120,19 @@ export class Loader {
       options.url,
       (texture) => {
         texture.mapping = THREE.EquirectangularReflectionMapping;
-        this.setEnvironment({ ...options, environmentMap: texture });
         options.onLoad?.(texture);
       },
       options.onProgress,
-      options.onError
+      options.onError,
     );
   }
 
   public async loadHDRAsync(options: AsyncOmitter<HDR_EXRLoaderOptions>) {
     const texture = await this.hdrLoader.loadAsync(
       options.url,
-      options.onProgress
+      options.onProgress,
     );
     texture.mapping = THREE.EquirectangularReflectionMapping;
-    this.setEnvironment({ ...options, environmentMap: texture });
     return texture;
   }
 
@@ -191,21 +141,19 @@ export class Loader {
       options.url,
       (texture) => {
         texture.mapping = THREE.EquirectangularReflectionMapping;
-        this.setEnvironment({ ...options, environmentMap: texture });
         options.onLoad?.(texture);
       },
       options.onProgress,
-      options.onError
+      options.onError,
     );
   }
 
   public async loadEXRAsync(options: AsyncOmitter<HDR_EXRLoaderOptions>) {
     const texture = await this.exrLoader.loadAsync(
       options.url,
-      options.onProgress
+      options.onProgress,
     );
     texture.mapping = THREE.EquirectangularReflectionMapping;
-    this.setEnvironment({ ...options, environmentMap: texture });
     return texture;
   }
 
@@ -217,3 +165,8 @@ export class Loader {
     this.dracoLoader.dispose();
   }
 }
+
+export {
+  applyEnvironmentToScene,
+  type EnvironmentApplyOptions,
+} from "./environment";
