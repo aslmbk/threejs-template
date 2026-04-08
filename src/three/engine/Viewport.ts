@@ -31,7 +31,6 @@ export class Viewport {
 
     this.resizeObserver = new ResizeObserver(() => this.scheduleResize());
     this.resizeObserver.observe(this.domElement);
-    window.addEventListener("resize", this.scheduleResize);
   }
 
   private measure() {
@@ -64,7 +63,6 @@ export class Viewport {
   }
 
   public destroy() {
-    window.removeEventListener("resize", this.scheduleResize);
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
     if (this.resizeRafId !== null) {

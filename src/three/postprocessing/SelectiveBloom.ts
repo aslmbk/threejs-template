@@ -43,7 +43,7 @@ export class SelectiveBloom {
     this.renderScene = new RenderPass(this.scene, this.camera);
 
     this.bloomPass = new UnrealBloomPass(
-      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      renderer.getSize(new THREE.Vector2()),
       1,
       0.5,
       0

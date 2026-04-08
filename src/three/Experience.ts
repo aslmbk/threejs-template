@@ -1,5 +1,4 @@
 import { Engine } from "./engine/Engine";
-import { DebugController } from "./DebugController";
 import { Config } from "./Config";
 import { DemoScene } from "./world/DemoScene";
 import type { SceneModule } from "./world/SceneModule";
@@ -19,7 +18,6 @@ if (import.meta.hot) {
 export class Experience {
   public readonly engine: Engine;
   public readonly config: Config;
-  public readonly debugController: DebugController;
   private readonly modules: SceneModule[] = [];
 
   static getInstance(domElement?: HTMLElement): Experience {
@@ -55,7 +53,11 @@ export class Experience {
   private constructor(domElement: HTMLElement) {
     this.config = new Config();
     this.engine = new Engine({ domElement, config: this.config });
-    this.debugController = new DebugController(this.config, this.engine);
+
+    if (this.config.debug) {
+      this.engine.helpers?.addAxesHelper();
+      this.engine.helpers?.addGridHelper();
+    }
 
     this.modules.push(new DemoScene(this.engine.scene, this.engine.time));
   }
@@ -65,7 +67,6 @@ export class Experience {
       m.destroy();
     }
     this.modules.length = 0;
-    this.debugController.destroy();
     this.engine.destroy();
     instance = null;
   }

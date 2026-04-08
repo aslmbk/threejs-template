@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { Config } from "../Config";
 import { Debug } from "./Debug";
 import { Time } from "./Time";
-import { Viewport } from "./Viewport";
+import { Viewport, type ViewportEventArgs } from "./Viewport";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { Loader } from "./Loader";
 import { Stats } from "./Stats";
@@ -50,6 +50,19 @@ export class Engine {
     this.stats?.update();
   };
 
+  private readonly onViewportChange = ({
+    width,
+    height,
+    ratio,
+    pixelRatio,
+  }: ViewportEventArgs) => {
+    this.camera.aspect = ratio;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(width, height);
+    this.renderer.setPixelRatio(pixelRatio);
+    this.cursor.resize();
+  };
+
   constructor({ domElement, config, autoRender = true }: EngineOptions) {
     this.domElement = domElement;
     this.autoRender = autoRender;
@@ -66,11 +79,7 @@ export class Engine {
     this.viewport = new Viewport(this.domElement, {
       maxPixelRatio: config.maxDevicePixelRatio,
     });
-    this.cursor = new Cursor(
-      this.domElement,
-      this.viewport.width,
-      this.viewport.height,
-    );
+    this.cursor = new Cursor(this.domElement);
     this.inputs = new Inputs();
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(
@@ -99,16 +108,7 @@ export class Engine {
     this.time.events.on("tick", this.onTickControls, 1);
     this.time.events.on("tick", this.onTickRender, 5);
     this.time.events.on("tick", this.onTickStats, 5);
-    this.viewport.events.on(
-      "change",
-      ({ width, height, ratio, pixelRatio }) => {
-        this.camera.aspect = ratio;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(width, height);
-        this.renderer.setPixelRatio(pixelRatio);
-        this.cursor.resize(width, height);
-      },
-    );
+    this.viewport.events.on("change", this.onViewportChange);
   }
 
   private disposeMaterial(material: THREE.Material) {
@@ -131,10 +131,9 @@ export class Engine {
     this.inputs.destroy();
     this.loader.destroy();
     this.rays.destroy();
-    this.stats?.deactivate();
     this.stats?.destroy();
-    this.debug?.deactivate();
     this.debug?.dispose();
+    this.helpers?.destroy();
     this.controls.dispose();
 
     this.scene.traverse((object) => {
@@ -158,7 +157,6 @@ export class Engine {
       }
     });
 
-    this.renderer.setAnimationLoop(null);
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }

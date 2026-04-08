@@ -73,7 +73,8 @@ export class Events<T extends EventMap, O extends number = 1 | 2 | 3 | 4 | 5> {
     for (const order of orders) {
       const callbacksArray = eventCallbacks[order];
       if (!callbacksArray || callbacksArray.length === 0) continue;
-      callbacksArray.forEach((callback) => (callback as any)(...args));
+      const snapshot = [...callbacksArray];
+      for (const callback of snapshot) (callback as any)(...args);
     }
     return this;
   }

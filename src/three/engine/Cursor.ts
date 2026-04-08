@@ -17,10 +17,6 @@ export class Cursor {
   }>();
 
   private domElement: HTMLElement;
-  private sizes = {
-    width: 0,
-    height: 0,
-  };
   private bounds = {
     left: 0,
     top: 0,
@@ -30,10 +26,8 @@ export class Cursor {
   private boundsDirty = true;
   private boundsRafId: number | null = null;
 
-  constructor(domElement: HTMLElement, width: number, height: number) {
+  constructor(domElement: HTMLElement) {
     this.domElement = domElement;
-    this.sizes.width = width;
-    this.sizes.height = height;
     this.refreshBounds();
 
     domElement.addEventListener("mousemove", this.onPointerMove);
@@ -45,9 +39,7 @@ export class Cursor {
     window.addEventListener("resize", this.scheduleBoundsRefresh);
   }
 
-  public resize(width: number, height: number) {
-    this.sizes.width = width;
-    this.sizes.height = height;
+  public resize() {
     this.refreshBounds();
   }
 
