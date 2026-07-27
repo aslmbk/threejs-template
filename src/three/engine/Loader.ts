@@ -3,7 +3,7 @@ import { type GLTF, GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { HDRLoader } from "three/addons/loaders/HDRLoader.js";
 import { EXRLoader } from "three/addons/loaders/EXRLoader.js";
-import { TextureAtlas, Events } from "../lib";
+import { TextureAtlas, Events, type TextureAtlasOptions } from "../lib";
 
 type LoaderOptions<Payload, Url extends string | string[] = string> = {
   url: Url;
@@ -94,8 +94,8 @@ export class Loader {
     return this.textureLoader.loadAsync(options.url, options.onProgress);
   }
 
-  public loadTextureAtlas(urls: string[]) {
-    return this.textureAtlas.load(urls);
+  public loadTextureAtlas(urls: string[], options?: TextureAtlasOptions) {
+    return this.textureAtlas.load(urls, options);
   }
 
   public loadCubeTexture(options: CubeTextureLoaderOptions) {

@@ -4,7 +4,7 @@
 
 | Layer | Role |
 |--------|------|
-| `App.tsx` | React `ref` on the canvas container; `useEffect` calls `Experience.getInstance` / `destroy`. |
+| `App.tsx` | React `ref` on the canvas container; `useEffect` calls `Experience.getInstance` / `destroy`. Startup failures land in the `ErrorBoundary` from `main.tsx`. |
 | `Experience` | Composition root: `Config`, `Engine`, and `SceneModule[]`. Private constructor; use `getInstance(domElement)`. |
 | `Engine` | Infrastructure only: Three.js renderer, scene graph, subsystems in `engine/`. No game/scene rules. |
 | `world/` | Scene features implementing `SceneModule` with their own `destroy()`. |
@@ -34,6 +34,14 @@ engine.autoRender = false;
 
 `engine.camera` is read-only; use `engine.setCamera(camera)` so the controls,
 raycaster and projection matrix follow along.
+
+A post-processing composer needs three things wired, not one:
+
+```ts
+engine.setRenderCallback(() => bloom.render());
+engine.viewport.events.on("change", ({ width, height }) => bloom.resize(width, height));
+// and bloom.dispose() from your module's destroy()
+```
 
 ## Loader and environment
 

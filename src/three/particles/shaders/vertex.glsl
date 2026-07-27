@@ -17,14 +17,14 @@ varying vec3 vWorldPosition;
 
 void main() {
   float life = data.x;
-  float id = data.y;
+  float seed = data.y;
   vec2 lifeUv = vec2(life, 0.5);
 
   float size = texture2D(uSizeOverLife, lifeUv).r;
   vec4 color = texture2D(uColorOverLife, lifeUv);
   float twinkle = texture2D(uTwinkleOverLife, lifeUv).r;
 
-  float twinkleFactor = mix(1.0, sin(uTime * 10.0 + id * TAU) * 0.5 + 0.5, twinkle);
+  float twinkleFactor = mix(1.0, sin(uTime * 10.0 + seed * TAU) * 0.5 + 0.5, twinkle);
   color.a *= twinkleFactor;
 
   vec4 worldPosition = modelMatrix * vec4(position, 1.0);
@@ -36,6 +36,6 @@ void main() {
   gl_PointSize *= (1.0 / -viewPosition.z);
 
   vColor = color;
-  vSpinSpeed = uSpinSpeed * (uTime * PI + id * TAU);
+  vSpinSpeed = uSpinSpeed * (uTime * PI + seed * TAU);
   vWorldPosition = worldPosition.xyz;
 }

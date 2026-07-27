@@ -10,6 +10,17 @@ function isAtlasImageSource(image: unknown): image is AtlasImageSource {
   return typeof width === "number" && typeof height === "number";
 }
 
+export type TextureAtlasOptions = {
+  /**
+   * Defaults to `THREE.NoColorSpace`, matching `THREE.TextureLoader`. Colour
+   * artwork must pass `THREE.SRGBColorSpace` — the bytes read back from the
+   * canvas are sRGB encoded, and leaving them tagged as linear renders the
+   * atlas washed out. Data atlases (masks, normals, packed channels) want the
+   * default.
+   */
+  colorSpace?: THREE.ColorSpace;
+};
+
 export class TextureAtlas {
   private loader: THREE.TextureLoader;
 
@@ -17,17 +28,35 @@ export class TextureAtlas {
     this.loader = textureLoader ?? new THREE.TextureLoader();
   }
 
-  public async load(texturePaths: string[]): Promise<THREE.DataArrayTexture> {
+  public async load(
+    texturePaths: string[],
+    options?: TextureAtlasOptions,
+  ): Promise<THREE.DataArrayTexture> {
+    if (texturePaths.length === 0) {
+      throw new Error("TextureAtlas.load: expected at least one texture path");
+    }
+
     const loadedTextures = await Promise.all(
       texturePaths.map((path) => {
         return this.loadTexture(path);
       })
     );
 
-    if (loadedTextures.length === 0) {
-      throw new Error("TextureAtlas.load: expected at least one texture path");
+    try {
+      return this.buildAtlas(loadedTextures, options);
+    } finally {
+      // The layers are copied into the array texture, so the sources are done
+      // with — including when a validation error aborts the build partway.
+      for (const texture of loadedTextures) {
+        texture.dispose();
+      }
     }
+  }
 
+  private buildAtlas(
+    loadedTextures: THREE.Texture[],
+    options?: TextureAtlasOptions,
+  ): THREE.DataArrayTexture {
     const firstImage = loadedTextures[0].image;
     if (!isAtlasImageSource(firstImage)) {
       throw new Error(
@@ -70,11 +99,10 @@ export class TextureAtlas {
 
       const imgData = context.getImageData(0, 0, width, height).data;
       data.set(imgData, i * size * 4);
-
-      texture.dispose();
     }
 
     const texture = new THREE.DataArrayTexture(data, width, height, depth);
+    texture.colorSpace = options?.colorSpace ?? THREE.NoColorSpace;
     texture.magFilter = THREE.NearestFilter;
     texture.minFilter = THREE.NearestFilter;
     texture.generateMipmaps = false;

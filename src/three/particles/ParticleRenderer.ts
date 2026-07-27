@@ -12,12 +12,16 @@ export type ParticleRendererParams = ParentParam & {
   disposeMaterial?: boolean;
 };
 
+type ResolvedParams = {
+  parent: THREE.Object3D;
+  maxParticles: number;
+  material: THREE.Material;
+  frustumCulled: boolean;
+  disposeMaterial: boolean;
+};
+
 export class ParticleRenderer {
-  private readonly params: Required<
-    Omit<ParticleRendererParams, "scene" | "parent"> & {
-      parent: THREE.Object3D;
-    }
-  >;
+  private readonly params: ResolvedParams;
 
   private readonly geometry = new THREE.BufferGeometry();
   private readonly points: THREE.Points;
@@ -29,10 +33,10 @@ export class ParticleRenderer {
   private readonly dataAttribute: THREE.BufferAttribute;
 
   constructor(params: ParticleRendererParams) {
-    const parent = "parent" in params ? params.parent : params.scene;
     this.params = {
-      ...params,
-      parent,
+      parent: "parent" in params ? params.parent : params.scene,
+      maxParticles: params.maxParticles,
+      material: params.material,
       frustumCulled: params.frustumCulled ?? false,
       disposeMaterial: params.disposeMaterial ?? false,
     };
@@ -40,13 +44,13 @@ export class ParticleRenderer {
     this.positions = new Float32Array(this.params.maxParticles * 3);
     this.data = new Float32Array(this.params.maxParticles * 2);
 
-    this.positionAttribute = new THREE.Float32BufferAttribute(
-      this.positions,
-      3
-    );
+    // BufferAttribute keeps the array by reference. Float32BufferAttribute does
+    // `new Float32Array(array)` instead, i.e. it COPIES — every write below
+    // would land in a buffer the GPU never sees. Do not "simplify" this back.
+    this.positionAttribute = new THREE.BufferAttribute(this.positions, 3);
     this.positionAttribute.setUsage(THREE.DynamicDrawUsage);
 
-    this.dataAttribute = new THREE.Float32BufferAttribute(this.data, 2);
+    this.dataAttribute = new THREE.BufferAttribute(this.data, 2);
     this.dataAttribute.setUsage(THREE.DynamicDrawUsage);
 
     this.geometry.setAttribute("position", this.positionAttribute);
@@ -75,11 +79,20 @@ export class ParticleRenderer {
 
       const i2 = i * 2;
       this.data[i2 + 0] = p.maxLife > 0 ? p.life / p.maxLife : 1;
-      this.data[i2 + 1] = p.id;
+      this.data[i2 + 1] = p.seed;
     }
 
-    this.positionAttribute.needsUpdate = true;
-    this.dataAttribute.needsUpdate = true;
+    if (count > 0) {
+      // Upload only the live prefix rather than the whole buffer. Ranges are
+      // measured in array elements, and three clears them after each upload.
+      this.positionAttribute.clearUpdateRanges();
+      this.positionAttribute.addUpdateRange(0, count * 3);
+      this.positionAttribute.needsUpdate = true;
+
+      this.dataAttribute.clearUpdateRanges();
+      this.dataAttribute.addUpdateRange(0, count * 2);
+      this.dataAttribute.needsUpdate = true;
+    }
 
     this.geometry.setDrawRange(0, count);
   }

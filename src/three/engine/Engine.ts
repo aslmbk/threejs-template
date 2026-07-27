@@ -10,6 +10,7 @@ import { Helpers } from "./Helpers";
 import { Cursor } from "./Cursor";
 import { Inputs } from "./Inputs";
 import { Rays } from "./Rays";
+import { addRendererDebugPane } from "./debugPanel";
 
 export type EngineOptions = {
   domElement: HTMLElement;
@@ -79,6 +80,16 @@ export class Engine {
     this.domElement = domElement;
     this._autoRender = autoRender;
 
+    // The renderer comes first on purpose: creating a WebGL context is the one
+    // step here that realistically throws, and everything below it registers a
+    // listener or mounts DOM. Built in this order a failure leaks nothing,
+    // because nothing has been attached yet. Do not reorder.
+    this.renderer = new THREE.WebGLRenderer({ antialias: config.antialias });
+    this.renderer.toneMapping = config.toneMapping;
+    this.renderer.toneMappingExposure = config.toneMappingExposure;
+    this.renderer.shadowMap.enabled = config.shadows;
+    this.renderer.shadowMap.type = config.shadowMapType;
+
     if (config.debug) {
       this.debug = new Debug(true);
       this.stats = new Stats(true);
@@ -100,11 +111,6 @@ export class Engine {
       config.cameraNear,
       config.cameraFar,
     );
-    this.renderer = new THREE.WebGLRenderer({ antialias: config.antialias });
-    this.renderer.toneMapping = config.toneMapping;
-    this.renderer.toneMappingExposure = config.toneMappingExposure;
-    this.renderer.shadowMap.enabled = config.shadows;
-    this.renderer.shadowMap.type = config.shadowMapType;
     this.controls = new OrbitControls(this._camera, this.renderer.domElement);
     this.rays = new Rays(this._camera);
     this.loader = new Loader();
@@ -114,6 +120,10 @@ export class Engine {
     this._camera.position.set(0, 0, 6);
     this.controls.enableDamping = true;
     this.domElement.appendChild(this.renderer.domElement);
+
+    if (this.debug) {
+      addRendererDebugPane(this.debug.pane, this.renderer, this.scene);
+    }
 
     this.registerEvents();
     this.viewport.refresh();

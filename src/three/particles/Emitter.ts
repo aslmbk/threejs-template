@@ -45,6 +45,7 @@ export class Emitter {
 
   private readonly rotation: THREE.Quaternion;
   private readonly rotationAngularVariance: number;
+  private readonly cosAngularVariance: number;
 
   private readonly gravity: THREE.Vector3;
   private readonly gravityStrength: number;
@@ -79,7 +80,12 @@ export class Emitter {
     this.velocityMagnitudeVariance = params.velocityMagnitudeVariance;
 
     this.rotation = params.rotation;
-    this.rotationAngularVariance = params.rotationAngularVariance;
+    this.rotationAngularVariance = MATH.clamp(
+      params.rotationAngularVariance,
+      0,
+      Math.PI,
+    );
+    this.cosAngularVariance = Math.cos(this.rotationAngularVariance);
 
     this.gravity = params.gravity;
     this.gravityStrength = params.gravityStrength;
@@ -124,14 +130,19 @@ export class Emitter {
   private emitOneParticle(): Particle {
     const particle = this.acquireParticle();
 
-    particle.id = this.random();
+    particle.seed = this.random();
     particle.life = 0;
     particle.maxLife = this.maxLife;
 
     this.shape.emit(particle, this.random);
 
     const phi = this.random() * Math.PI * 2;
-    const theta = this.random() * this.rotationAngularVariance;
+    // Uniform coverage of a spherical cap needs cos(theta) distributed
+    // uniformly. Drawing theta itself bunches particles around the axis,
+    // because the cap's area element carries a sin(theta) factor.
+    const cosTheta =
+      1 - this.random() * (1 - this.cosAngularVariance);
+    const theta = Math.acos(MATH.clamp(cosTheta, -1, 1));
 
     const x = Math.sin(theta) * Math.cos(phi);
     const y = Math.cos(theta);

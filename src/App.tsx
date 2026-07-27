@@ -9,6 +9,8 @@ export default function App() {
     const container = containerRef.current;
     if (!container) return;
 
+    // A failure here (no WebGL context, for instance) propagates to the
+    // ErrorBoundary in main.tsx rather than blanking the page.
     const experience = Experience.getInstance(container);
 
     return () => {

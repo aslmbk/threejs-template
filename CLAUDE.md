@@ -11,7 +11,7 @@ bun run lint       # ESLint
 bun run preview    # Preview production build
 ```
 
-No test runner is configured. Use `renderer.info` and Chrome Performance for runtime diagnostics.
+No test runner is configured. Use `renderer.info` and Chrome Performance for runtime diagnostics. `tsc` runs with `strict` on — keep it that way, the codebase is clean under it.
 
 ## Architecture
 
@@ -21,7 +21,7 @@ The stack is React (mount only) + Three.js (all rendering). React manages a sing
 
 | Layer | File | Role |
 |-------|------|------|
-| React entry | `App.tsx` | Holds a `ref` on the container div; calls `Experience.getInstance` / `destroy` in `useEffect` |
+| React entry | `App.tsx` | Holds a `ref` on the container div; calls `Experience.getInstance` / `destroy` in `useEffect`. Failures (no WebGL context) propagate to `ErrorBoundary` in `main.tsx` |
 | Composition root | `src/three/Experience.ts` | Singleton. Creates `Config` and `Engine`, and registers `SceneModule[]` |
 | Infrastructure | `src/three/engine/Engine.ts` | Owns WebGL: renderer, scene, camera, `Time`, `Viewport`, `Loader`, `Cursor`, `Inputs`, `Rays`, `OrbitControls`, `Stats`, `Helpers`. No scene logic |
 | Scene features | `src/three/world/` | Classes implementing `SceneModule` (only requires `destroy()`) |
@@ -31,6 +31,8 @@ The stack is React (mount only) + Three.js (all rendering). React manages a sing
 `Config` parses `location.hash` as a parameter list — visit `http://localhost:5173/#debug` (or `#a=1&debug`) to enable Tweakpane, FPS/GPU stats, axes, and grid. Without `#debug`, `engine.debug`, `engine.stats`, and `engine.helpers` are `undefined`.
 
 `Config` also carries the renderer and loop settings: `maxDelta` (tick delta clamp), `toneMapping` / `toneMappingExposure`, `shadows` / `shadowMapType`, `antialias`, `maxDevicePixelRatio`, and the camera frustum. All default to Three.js' own values, so the out-of-the-box image is unchanged.
+
+In debug mode `engine/debugPanel.ts` puts those renderer settings into a Tweakpane folder. Three re-derives its shader programs when `toneMapping` changes, but not for the shadow map or the output colour space — those bindings flag every material for a rebuild, which is what `invalidateMaterials` is for.
 
 ### Rendering
 
@@ -70,6 +72,12 @@ applyEnvironmentToScene(engine.scene, tex, { setEnvironment: true, setBackground
 
 DRACO decoder path is set to `/draco/` — place decoder files in `public/draco/`.
 
+`loadTextureAtlas(urls, options)` packs equally sized images into a `DataArrayTexture`. Like `TextureLoader` it leaves `colorSpace` at `NoColorSpace`; colour artwork must pass `{ colorSpace: THREE.SRGBColorSpace }` or it renders washed out.
+
+### Reproducible randomness
+
+`MATH.random` and `NOISE` are both seeded from `MATH.DEFAULT_SEED`, on separate streams, so results repeat across reloads and consuming one does not shift the other. `MATH.createRandom(seed)` hands out further independent streams — `Emitter` takes one through its `random` parameter.
+
 ### HMR behavior
 
 `Experience.ts` uses `import.meta.hot.data` to survive Vite hot reloads without losing the WebGL context. Edits to `Experience.ts` rebind the singleton prototype. Edits deeper into `Engine` internals typically require a full page reload. React StrictMode causes a mount → unmount → mount cycle in dev — the engine is created, destroyed, and re-created once; this is expected.
@@ -78,9 +86,24 @@ DRACO decoder path is set to `/draco/` — place decoder files in `public/draco/
 
 `ParticleSystem` manages a list of `Emitter` + optional `ParticleRenderer` pairs. Call `system.step(time)` each tick. Finished emitters are auto-removed. `EmitterShape` is an interface — `PointShape` is the built-in implementation.
 
+`ParticleRenderer` builds its attributes with `THREE.BufferAttribute`, never `Float32BufferAttribute` — the latter copies the array it is handed, which would silently detach every per-frame write from the buffer the GPU reads.
+
+The bundled shaders expect these uniforms: `uTime`, `uResolution`, `uSize`, `uSizeOverLife`, `uColorOverLife`, `uTwinkleOverLife`, `uSpinSpeed`, `uMap`, `uLightFactor`, `uLightIntensity`, `uLightPosition`, `uLightNearColor`, `uLightFarColor`, `uLightFalloff`. The `*OverLife` ramps come from `FloatInterpolant.toTexture()` / `ColorInterpolant.toTexture(alpha?)`. Fragment output is premultiplied — pair it with additive or custom blending.
+
 ### Post-processing (`src/three/postprocessing/`)
 
-`SelectiveBloom` implements a two-pass bloom: bloom composer darkens non-bloomed objects, renders bloom, then final composer composites. Hand it the render loop with `engine.setRenderCallback(() => selectiveBloom.render())` — calling it on top of the default render would draw the frame twice. Mark objects for bloom with `selectiveBloom.toggleBloom(object)` (uses Three.js Layers, layer index 1).
+`SelectiveBloom` implements a two-pass bloom: bloom composer darkens non-bloomed objects, renders bloom, then final composer composites. Mark objects for bloom with `selectiveBloom.toggleBloom(object)` (uses Three.js Layers, layer index 1). It stays independent of `Engine`, so wire it up yourself:
+
+```ts
+engine.setRenderCallback(() => selectiveBloom.render());
+engine.viewport.events.on("change", ({ width, height }) =>
+  selectiveBloom.resize(width, height),
+);
+// in your module's destroy()
+selectiveBloom.dispose();
+```
+
+Calling `render()` on top of the engine's default render would draw the frame twice, and skipping `dispose()` strands both composers' render targets — about a dozen textures per teardown, on every StrictMode cycle and HMR reload.
 
 ### GLSL shaders
 
