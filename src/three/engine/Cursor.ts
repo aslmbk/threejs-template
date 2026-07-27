@@ -1,9 +1,13 @@
 import { Events } from "../lib";
 
-export type CursorEventArgs = {
+/**
+ * `x`/`y` are normalized device coordinates, ready to hand to `Rays`.
+ * `click` is a plain MouseEvent; every other event carries the PointerEvent.
+ */
+export type CursorEventArgs<E extends MouseEvent = PointerEvent> = {
   x: number;
   y: number;
-  event: MouseEvent;
+  event: E;
 };
 
 export class Cursor {
@@ -13,43 +17,46 @@ export class Cursor {
     move: CursorEventArgs;
     down: CursorEventArgs;
     up: CursorEventArgs;
-    click: CursorEventArgs;
+    click: CursorEventArgs<MouseEvent>;
   }>();
 
-  private domElement: HTMLElement;
-  private bounds = {
+  private readonly domElement: HTMLElement;
+  private readonly bounds = {
     left: 0,
     top: 0,
     width: 0,
     height: 0,
   };
   private boundsDirty = true;
-  private boundsRafId: number | null = null;
 
   constructor(domElement: HTMLElement) {
     this.domElement = domElement;
-    this.refreshBounds();
 
-    domElement.addEventListener("mousemove", this.onPointerMove);
-    domElement.addEventListener("mousedown", this.onPointerDown);
-    domElement.addEventListener("mouseup", this.onPointerUp);
+    // Pointer events cover mouse, touch and pen with one code path. Plain mouse
+    // events are only synthesized for taps, so a touch drag would never move the
+    // cursor; `pointercancel` stands in for the `pointerup` the browser swallows
+    // when it takes the gesture over.
+    domElement.addEventListener("pointermove", this.onPointerMove);
+    domElement.addEventListener("pointerdown", this.onPointerDown);
+    domElement.addEventListener("pointerup", this.onPointerUp);
+    domElement.addEventListener("pointercancel", this.onPointerUp);
     domElement.addEventListener("click", this.onClick);
 
-    window.addEventListener("scroll", this.scheduleBoundsRefresh, true);
-    window.addEventListener("resize", this.scheduleBoundsRefresh);
+    // Bounds only change through layout. Invalidating is free, so these can
+    // overlap with Engine's viewport-driven resize() without doing double work,
+    // and the rect is read lazily on the next pointer event instead of forcing
+    // a reflow from inside a resize or scroll handler.
+    window.addEventListener("scroll", this.invalidateBounds, true);
+    window.addEventListener("resize", this.invalidateBounds);
   }
 
+  /** Marks the cached bounds stale; Engine calls this on every viewport change. */
   public resize() {
-    this.refreshBounds();
+    this.boundsDirty = true;
   }
 
-  private scheduleBoundsRefresh = () => {
+  private invalidateBounds = () => {
     this.boundsDirty = true;
-    if (this.boundsRafId !== null) return;
-    this.boundsRafId = requestAnimationFrame(() => {
-      this.boundsRafId = null;
-      this.refreshBounds();
-    });
   };
 
   private refreshBounds() {
@@ -76,17 +83,17 @@ export class Cursor {
     return true;
   }
 
-  private onPointerMove = (event: MouseEvent) => {
+  private onPointerMove = (event: PointerEvent) => {
     if (!this.updateFromEvent(event)) return;
     this.events.trigger("move", { x: this.x, y: this.y, event });
   };
 
-  private onPointerDown = (event: MouseEvent) => {
+  private onPointerDown = (event: PointerEvent) => {
     if (!this.updateFromEvent(event)) return;
     this.events.trigger("down", { x: this.x, y: this.y, event });
   };
 
-  private onPointerUp = (event: MouseEvent) => {
+  private onPointerUp = (event: PointerEvent) => {
     if (!this.updateFromEvent(event)) return;
     this.events.trigger("up", { x: this.x, y: this.y, event });
   };
@@ -97,17 +104,14 @@ export class Cursor {
   };
 
   public destroy() {
-    this.domElement.removeEventListener("mousemove", this.onPointerMove);
-    this.domElement.removeEventListener("mousedown", this.onPointerDown);
-    this.domElement.removeEventListener("mouseup", this.onPointerUp);
+    this.domElement.removeEventListener("pointermove", this.onPointerMove);
+    this.domElement.removeEventListener("pointerdown", this.onPointerDown);
+    this.domElement.removeEventListener("pointerup", this.onPointerUp);
+    this.domElement.removeEventListener("pointercancel", this.onPointerUp);
     this.domElement.removeEventListener("click", this.onClick);
 
-    window.removeEventListener("scroll", this.scheduleBoundsRefresh, true);
-    window.removeEventListener("resize", this.scheduleBoundsRefresh);
-    if (this.boundsRafId !== null) {
-      cancelAnimationFrame(this.boundsRafId);
-      this.boundsRafId = null;
-    }
+    window.removeEventListener("scroll", this.invalidateBounds, true);
+    window.removeEventListener("resize", this.invalidateBounds);
 
     this.events.off("move");
     this.events.off("down");

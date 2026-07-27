@@ -41,7 +41,7 @@ export class Debug {
     this.hidden = true;
   }
 
-  public dispose() {
+  public destroy() {
     if (!this._pane) return;
     this._pane.dispose();
     this._pane = null;

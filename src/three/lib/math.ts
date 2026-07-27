@@ -42,8 +42,8 @@ export class Interpolant<T = number[]> {
 
     this.frameBuffer = new Float32Array(stride);
     this.interpolator = new THREE.LinearInterpolant(
-      times,
-      values,
+      new Float32Array(times),
+      new Float32Array(values),
       stride,
       this.frameBuffer
     );

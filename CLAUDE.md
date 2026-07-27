@@ -22,13 +22,29 @@ The stack is React (mount only) + Three.js (all rendering). React manages a sing
 | Layer | File | Role |
 |-------|------|------|
 | React entry | `App.tsx` | Holds a `ref` on the container div; calls `Experience.getInstance` / `destroy` in `useEffect` |
-| Composition root | `src/three/Experience.ts` | Singleton. Creates `Config`, `Engine`, `DebugController`, and registers `SceneModule[]` |
+| Composition root | `src/three/Experience.ts` | Singleton. Creates `Config` and `Engine`, and registers `SceneModule[]` |
 | Infrastructure | `src/three/engine/Engine.ts` | Owns WebGL: renderer, scene, camera, `Time`, `Viewport`, `Loader`, `Cursor`, `Inputs`, `Rays`, `OrbitControls`, `Stats`, `Helpers`. No scene logic |
 | Scene features | `src/three/world/` | Classes implementing `SceneModule` (only requires `destroy()`) |
 
 ### Config and debug mode
 
-`Config` reads `location.hash` — visit `http://localhost:5173/#debug` to enable Tweakpane, FPS/GPU stats, axes, and grid. Without `#debug`, `engine.debug`, `engine.stats`, and `engine.helpers` are `undefined`.
+`Config` parses `location.hash` as a parameter list — visit `http://localhost:5173/#debug` (or `#a=1&debug`) to enable Tweakpane, FPS/GPU stats, axes, and grid. Without `#debug`, `engine.debug`, `engine.stats`, and `engine.helpers` are `undefined`.
+
+`Config` also carries the renderer and loop settings: `maxDelta` (tick delta clamp), `toneMapping` / `toneMappingExposure`, `shadows` / `shadowMapType`, `antialias`, `maxDevicePixelRatio`, and the camera frustum. All default to Three.js' own values, so the out-of-the-box image is unchanged.
+
+### Rendering
+
+The tick loop renders at order 5. `engine.setRenderCallback(fn)` replaces `renderer.render(scene, camera)` — this is the hook for a post-processing composer. `engine.autoRender = false` disables engine-driven rendering entirely.
+
+`engine.camera` is a read-only getter; call `engine.setCamera(camera)` so `OrbitControls`, `Rays` and the projection matrix stay in sync.
+
+### Engine subsystems (`src/three/engine/`)
+
+Every subsystem exposes `destroy()` (no `dispose()` variants) and unsubscribes its own listeners there. Beyond that:
+
+- `Time` extends `THREE.Timer` and connects it to the Page Visibility API, so a hidden tab does not produce a delta spike. `tick` deltas are clamped to `config.maxDelta`, scaled by the timescale; `getElapsed()` is the integral of those clamped deltas.
+- `Cursor` emits `PointerEvent`s (mouse, touch and pen), except `click` which stays a `MouseEvent`. `x`/`y` are normalized device coordinates ready for `Rays`. Bounds are cached and recomputed lazily on the next pointer event.
+- `Inputs.keys` is indexed by both `KeyboardEvent.code` (prefer it — layout independent) and `KeyboardEvent.key`. Held keys are released on window `blur`, which emits `reset`.
 
 ### Adding a scene feature
 
@@ -64,7 +80,7 @@ DRACO decoder path is set to `/draco/` — place decoder files in `public/draco/
 
 ### Post-processing (`src/three/postprocessing/`)
 
-`SelectiveBloom` implements a two-pass bloom: bloom composer darkens non-bloomed objects, renders bloom, then final composer composites. Call `selectiveBloom.render()` instead of `renderer.render()`. Mark objects for bloom with `selectiveBloom.toggleBloom(object)` (uses Three.js Layers, layer index 1).
+`SelectiveBloom` implements a two-pass bloom: bloom composer darkens non-bloomed objects, renders bloom, then final composer composites. Hand it the render loop with `engine.setRenderCallback(() => selectiveBloom.render())` — calling it on top of the default render would draw the frame twice. Mark objects for bloom with `selectiveBloom.toggleBloom(object)` (uses Three.js Layers, layer index 1).
 
 ### GLSL shaders
 

@@ -5,7 +5,7 @@
 | Layer | Role |
 |--------|------|
 | `App.tsx` | React `ref` on the canvas container; `useEffect` calls `Experience.getInstance` / `destroy`. |
-| `Experience` | Composition root: `Config`, `Engine`, `DebugController`, and `SceneModule[]`. Private constructor; use `getInstance(domElement)`. |
+| `Experience` | Composition root: `Config`, `Engine`, and `SceneModule[]`. Private constructor; use `getInstance(domElement)`. |
 | `Engine` | Infrastructure only: Three.js renderer, scene graph, subsystems in `engine/`. No game/scene rules. |
 | `world/` | Scene features implementing `SceneModule` with their own `destroy()`. |
 
@@ -19,6 +19,21 @@
 ## Events
 
 [`lib/Events.ts`](lib/Events.ts) supports `off(event, handler)` for targeted unsubscribe. Avoid anonymous functions in `on()` if you need cleanup.
+
+## Rendering
+
+The tick loop calls `renderer.render(scene, camera)` at order 5. To take it over:
+
+```ts
+// Swap what gets rendered, keeping the engine's tick ordering.
+engine.setRenderCallback(() => selectiveBloom.render());
+
+// Or drive rendering entirely yourself.
+engine.autoRender = false;
+```
+
+`engine.camera` is read-only; use `engine.setCamera(camera)` so the controls,
+raycaster and projection matrix follow along.
 
 ## Loader and environment
 
