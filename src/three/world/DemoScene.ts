@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import * as THREE from "three/webgpu";
 import type { Time, TimeEventArgs } from "../engine/Time";
 import type { SceneModule } from "./SceneModule";
 

@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import * as THREE from "three/webgpu";
 
 import { MATH } from "../lib";
 import { Attractor } from "./Attractor";

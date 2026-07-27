@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import type * as THREE from "three/webgpu";
 import type { Pane } from "tweakpane";
 import {
   colorSpaceOptions,
@@ -7,29 +7,16 @@ import {
 } from "../lib";
 
 /**
- * Several renderer settings are baked into the compiled shaders. Three notices
- * a `toneMapping` change on its own and re-derives the program, but the shadow
- * map and the output colour space are only read while a program is being built
- * — without this the control moves and nothing happens on screen.
+ * Live controls for the renderer settings that `Config` seeds at startup.
+ *
+ * Unlike the WebGL renderer, nothing here needs a manual material invalidation:
+ * `shadowMap.enabled` and `shadowMap.type` are part of the per-draw cache key in
+ * `NodeManager.getCacheKey()`, and `toneMapping` / `outputColorSpace` are keyed
+ * by `getOutputCacheKey()`, which rebuilds the output pass on its own.
  */
-function invalidateMaterials(scene: THREE.Scene) {
-  scene.traverse((object) => {
-    const material = (object as THREE.Mesh).material;
-    if (!material) return;
-
-    if (Array.isArray(material)) {
-      for (const entry of material) entry.needsUpdate = true;
-    } else {
-      material.needsUpdate = true;
-    }
-  });
-}
-
-/** Live controls for the renderer settings that `Config` seeds at startup. */
 export function addRendererDebugPane(
   pane: Pane,
-  renderer: THREE.WebGLRenderer,
-  scene: THREE.Scene,
+  renderer: THREE.WebGPURenderer,
 ): void {
   const folder = pane.addFolder({ title: "Renderer", expanded: false });
 
@@ -43,22 +30,40 @@ export function addRendererDebugPane(
     max: 4,
     step: 0.01,
   });
+  folder.addBinding(renderer, "outputColorSpace", {
+    label: "output space",
+    options: colorSpaceOptions,
+  });
+  folder.addBinding(renderer.shadowMap, "enabled", { label: "shadows" });
+  folder.addBinding(renderer.shadowMap, "type", {
+    label: "shadow filter",
+    options: shadowMapTypeOptions,
+  });
+}
 
-  folder
-    .addBinding(renderer, "outputColorSpace", {
-      label: "output space",
-      options: colorSpaceOptions,
-    })
-    .on("change", () => invalidateMaterials(scene));
+/**
+ * Read-outs from `renderer.info`. The draw counters are per frame — the
+ * renderer's own animation loop resets them before each one — while the memory
+ * figures are running totals, which makes them the quickest way to spot a
+ * resource leak across a teardown.
+ */
+export function addInfoDebugPane(
+  pane: Pane,
+  renderer: THREE.WebGPURenderer,
+): void {
+  const folder = pane.addFolder({ title: "Info", expanded: false });
+  const { render, memory } = renderer.info;
 
-  folder
-    .addBinding(renderer.shadowMap, "enabled", { label: "shadows" })
-    .on("change", () => invalidateMaterials(scene));
-
-  folder
-    .addBinding(renderer.shadowMap, "type", {
-      label: "shadow filter",
-      options: shadowMapTypeOptions,
-    })
-    .on("change", () => invalidateMaterials(scene));
+  folder.addBinding(render, "drawCalls", {
+    readonly: true,
+    label: "draw calls",
+  });
+  folder.addBinding(render, "triangles", { readonly: true });
+  folder.addBinding(memory, "geometries", { readonly: true });
+  folder.addBinding(memory, "textures", { readonly: true });
+  folder.addBinding(memory, "renderTargets", {
+    readonly: true,
+    label: "render targets",
+  });
+  folder.addBinding(memory, "programs", { readonly: true });
 }

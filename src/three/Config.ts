@@ -1,7 +1,8 @@
-import * as THREE from "three";
+import * as THREE from "three/webgpu";
 
 export type ConfigOptions = {
   debug?: boolean;
+  forceWebGL?: boolean;
   maxDevicePixelRatio?: number;
   maxDelta?: number;
   antialias?: boolean;
@@ -18,13 +19,14 @@ export type ConfigOptions = {
  * Treats the hash as a parameter list, so `#debug`, `#debug&foo` and `#a=1&debug`
  * all enable it while `#debugger` and `#nodebug` do not.
  */
-function hasDebugFlag(): boolean {
+function hasFlag(name: string): boolean {
   if (typeof location === "undefined") return false;
-  return new URLSearchParams(location.hash.slice(1)).has("debug");
+  return new URLSearchParams(location.hash.slice(1)).has(name);
 }
 
 export class Config {
   readonly debug: boolean;
+  readonly forceWebGL: boolean;
   readonly maxDevicePixelRatio: number;
   readonly maxDelta: number;
   readonly antialias: boolean;
@@ -37,7 +39,11 @@ export class Config {
   readonly shadowMapType: THREE.ShadowMapType;
 
   constructor(options: ConfigOptions = {}) {
-    this.debug = options.debug ?? hasDebugFlag();
+    this.debug = options.debug ?? hasFlag("debug");
+    // `#webgl` pins the renderer to the WebGL2 backend. WebGPURenderer already
+    // falls back on its own, so this exists to make the fallback path testable
+    // on a machine where WebGPU works.
+    this.forceWebGL = options.forceWebGL ?? hasFlag("webgl");
     this.maxDevicePixelRatio = options.maxDevicePixelRatio ?? 2;
     this.maxDelta = options.maxDelta ?? 0.1;
     this.antialias = options.antialias ?? true;

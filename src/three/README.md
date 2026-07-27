@@ -4,10 +4,28 @@
 
 | Layer | Role |
 |--------|------|
-| `App.tsx` | React `ref` on the canvas container; `useEffect` calls `Experience.getInstance` / `destroy`. Startup failures land in the `ErrorBoundary` from `main.tsx`. |
+| `App.tsx` | React `ref` on the canvas container; `useEffect` calls `Experience.getInstance` / `destroy`, and routes `engine.ready` rejections to the `ErrorBoundary` from `main.tsx`. |
 | `Experience` | Composition root: `Config`, `Engine`, and `SceneModule[]`. Private constructor; use `getInstance(domElement)`. |
-| `Engine` | Infrastructure only: Three.js renderer, scene graph, subsystems in `engine/`. No game/scene rules. |
+| `Engine` | Infrastructure only: the renderer, scene graph, subsystems in `engine/`. No game/scene rules. |
 | `world/` | Scene features implementing `SceneModule` with their own `destroy()`. |
+
+## Renderer
+
+`WebGPURenderer` from `three/webgpu`, which is backend-agnostic: it tries WebGPU
+and falls back to WebGL2 on its own inside `init()`. Import everything from
+`three/webgpu` (a superset of `three`) and nodes from `three/tsl`.
+
+```ts
+await engine.ready;                          // backend up, loop running
+engine.renderer.backend.isWebGPUBackend;     // which one won
+engine.renderer.coordinateSystem;            // WebGPU clips depth 0..1, WebGL -1..1
+```
+
+Add `#webgl` to the URL to force the fallback path (`#debug&webgl` for both).
+
+Startup is asynchronous — `renderer.render()` throws before a backend exists.
+The constructor stays synchronous and hands you `ready`; **observe it**, or a
+failure to start becomes an unhandled rejection and a blank page.
 
 ## Adding a feature
 
@@ -22,7 +40,9 @@
 
 ## Rendering
 
-The tick loop calls `renderer.render(scene, camera)` at order 5. To take it over:
+The tick loop calls `renderer.render(scene, camera)` at order 5, driven from
+`renderer.setAnimationLoop` — `Time` no longer schedules its own rAF, because the
+renderer already runs one. To take rendering over:
 
 ```ts
 // Swap what gets rendered, keeping the engine's tick ordering.
@@ -35,13 +55,24 @@ engine.autoRender = false;
 `engine.camera` is read-only; use `engine.setCamera(camera)` so the controls,
 raycaster and projection matrix follow along.
 
-A post-processing composer needs three things wired, not one:
+A post-processing pipeline needs two things wired, not three — `PassNode` and
+`BloomNode` pick up the renderer's size themselves each frame:
 
 ```ts
 engine.setRenderCallback(() => bloom.render());
-engine.viewport.events.on("change", ({ width, height }) => bloom.resize(width, height));
 // and bloom.dispose() from your module's destroy()
 ```
+
+## Shaders
+
+TSL only. `WebGPURenderer` rejects a hand-written `ShaderMaterial` on both
+backends, and the WebGL2 fallback compiles GLSL *from nodes* rather than
+accepting your own. See [`particles/material.ts`](particles/material.ts) for a
+worked example.
+
+Careful with premultiplied output: the renderer resolves through an intermediate
+buffer whose output transform maps alpha `0` to pure black, so a fragment must
+still write real coverage into alpha even under additive blending.
 
 ## Loader and environment
 

@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import * as THREE from "three/webgpu";
 
 /** Every three helper exposes dispose(), but Object3D itself does not declare it. */
 function disposeHelper(helper: THREE.Object3D): void {

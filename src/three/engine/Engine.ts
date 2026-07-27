@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import * as THREE from "three/webgpu";
 import type { Config } from "../Config";
 import { Debug } from "./Debug";
 import { Time } from "./Time";
@@ -10,7 +10,7 @@ import { Helpers } from "./Helpers";
 import { Cursor } from "./Cursor";
 import { Inputs } from "./Inputs";
 import { Rays } from "./Rays";
-import { addRendererDebugPane } from "./debugPanel";
+import { addInfoDebugPane, addRendererDebugPane } from "./debugPanel";
 
 export type EngineOptions = {
   domElement: HTMLElement;
@@ -32,12 +32,22 @@ export class Engine {
   public readonly cursor: Cursor;
   public readonly inputs: Inputs;
   public readonly scene: THREE.Scene;
-  public readonly renderer: THREE.WebGLRenderer;
+  public readonly renderer: THREE.WebGPURenderer;
   public readonly controls: OrbitControls;
   public readonly rays: Rays;
   public readonly loader: Loader;
   public readonly stats: Stats | undefined;
   public readonly helpers: Helpers | undefined;
+
+  /**
+   * Resolves once a backend is up and the render loop is running, and rejects
+   * when neither WebGPU nor WebGL2 could be brought up. Nothing is drawn before
+   * it settles — `renderer.render()` throws while the backend is missing.
+   *
+   * Observe it. An unobserved rejection here is an unhandled promise rejection
+   * and the page silently stays blank; `App.tsx` routes it to the ErrorBoundary.
+   */
+  public readonly ready: Promise<void>;
 
   private _camera: THREE.PerspectiveCamera;
   private _autoRender: boolean;
@@ -80,11 +90,15 @@ export class Engine {
     this.domElement = domElement;
     this._autoRender = autoRender;
 
-    // The renderer comes first on purpose: creating a WebGL context is the one
-    // step here that realistically throws, and everything below it registers a
-    // listener or mounts DOM. Built in this order a failure leaks nothing,
-    // because nothing has been attached yet. Do not reorder.
-    this.renderer = new THREE.WebGLRenderer({ antialias: config.antialias });
+    // The renderer comes first on purpose: everything below it registers a
+    // listener or mounts DOM, so building in this order means a failure leaks
+    // nothing. Note that unlike WebGLRenderer this constructor does not touch
+    // the GPU at all — the canvas exists immediately but the device is only
+    // acquired in init(), which is why the failure path is `ready`, not a throw.
+    this.renderer = new THREE.WebGPURenderer({
+      antialias: config.antialias,
+      forceWebGL: config.forceWebGL,
+    });
     this.renderer.toneMapping = config.toneMapping;
     this.renderer.toneMappingExposure = config.toneMappingExposure;
     this.renderer.shadowMap.enabled = config.shadows;
@@ -122,12 +136,41 @@ export class Engine {
     this.domElement.appendChild(this.renderer.domElement);
 
     if (this.debug) {
-      addRendererDebugPane(this.debug.pane, this.renderer, this.scene);
+      addRendererDebugPane(this.debug.pane, this.renderer);
+      addInfoDebugPane(this.debug.pane, this.renderer);
     }
 
     this.registerEvents();
     this.viewport.refresh();
+    this.ready = this.initAsync();
+  }
+
+  /**
+   * Brings up a backend and starts the loop. WebGPURenderer tries WebGPU first
+   * and rebuilds itself on a WebGL2 backend if that fails, so this covers both
+   * paths — `config.forceWebGL` (the `#webgl` flag) skips straight to WebGL2.
+   */
+  private async initAsync(): Promise<void> {
+    await this.renderer.init();
+
+    // destroy() may have run while the device was still being acquired — React
+    // StrictMode does exactly that on every mount. Its renderer.dispose() was a
+    // no-op back then (dispose() only does work once initialized), so the
+    // teardown has to happen here instead.
+    if (this.destroyed) {
+      this.renderer.dispose();
+      return;
+    }
+
+    this.stats?.attach(this.renderer);
+
+    // Reset right before the loop is wired: the gap between construction and a
+    // live device would otherwise land in the first frame's delta.
     this.time.start();
+    // The renderer runs its own requestAnimationFrame from init() onwards, so
+    // driving Time from it avoids a second loop and puts the tick after
+    // nodeFrame.update() and info.reset().
+    void this.renderer.setAnimationLoop(() => this.time.tick());
   }
 
   public get camera(): THREE.PerspectiveCamera {
@@ -180,7 +223,7 @@ export class Engine {
 
   /**
    * Replaces `renderer.render(scene, camera)` inside the tick loop — the hook a
-   * post-processing composer plugs into, e.g.
+   * post-processing pipeline plugs into, e.g.
    * `engine.setRenderCallback(() => selectiveBloom.render())`.
    * Pass null to restore the default. Ignored while `autoRender` is false.
    */
@@ -271,12 +314,11 @@ export class Engine {
 
     this.disposeScene();
 
+    // Stops the animation loop, frees every backend resource and — on the WebGL
+    // backend — loses the context on its own, so there is no forceContextLoss()
+    // to call here. A no-op while the backend is still initializing; initAsync
+    // picks that case up once its await returns.
     this.renderer.dispose();
-    // dispose() frees three's caches but leaves the WebGL context alive, and
-    // browsers cap how many can exist at once. This engine is torn down and
-    // rebuilt on every React StrictMode cycle and every HMR reload, so the
-    // context has to go back explicitly.
-    this.renderer.forceContextLoss();
     this.renderer.domElement.remove();
   }
 }

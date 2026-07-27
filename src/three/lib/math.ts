@@ -1,5 +1,5 @@
 import MersenneTwister from "mersennetwister";
-import * as THREE from "three";
+import * as THREE from "three/webgpu";
 
 /** Seed shared by `random` and the noise module, so both reproduce across reloads. */
 export const DEFAULT_SEED = 1;

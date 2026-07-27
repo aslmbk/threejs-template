@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import * as THREE from "three/webgpu";
 
 type AtlasImageSource = CanvasImageSource & { width: number; height: number };
 

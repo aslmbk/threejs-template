@@ -1,11 +1,13 @@
 import StatsJS from "stats.js";
 import StatsGL from "stats-gl";
+import type * as THREE from "three/webgpu";
 
 type StatsType = "js" | "gl";
 
 export class Stats {
   private statsJS: StatsJS | null = null;
   private statsGL: StatsGL | null = null;
+  private renderer: THREE.WebGPURenderer | null = null;
   private active = false;
   private type: StatsType = "js";
   private disposed = false;
@@ -22,13 +24,41 @@ export class Stats {
   }
 
   private ensureStatsGL() {
-    this.statsGL ??= new StatsGL({
-      horizontal: false,
-      trackCPT: true,
-      trackGPU: true,
-      trackHz: true,
-    });
+    if (!this.statsGL) {
+      this.statsGL = new StatsGL({
+        horizontal: false,
+        trackCPT: true,
+        trackGPU: true,
+        trackHz: true,
+      });
+      this.initStatsGL();
+    }
     return this.statsGL;
+  }
+
+  /**
+   * stats-gl needs the renderer itself, not just a canvas: it reads
+   * `renderer.info` and flips `backend.trackTimestamp` on to get GPU timings out
+   * of WebGPU. Skipping this leaves the GPU and CPT panels pinned at zero.
+   */
+  private initStatsGL() {
+    const { statsGL, renderer } = this;
+    if (!statsGL || !renderer) return;
+
+    void statsGL.init(renderer).catch((error: unknown) => {
+      console.warn("Stats: GPU tracking unavailable.", error);
+    });
+  }
+
+  /**
+   * Connects the panels to a renderer. Call it once the backend is initialized
+   * — `Engine` does this from `ready`. Safe to call before the GL panel exists;
+   * the renderer is remembered and used when it is created.
+   */
+  public attach(renderer: THREE.WebGPURenderer) {
+    if (this.disposed) return;
+    this.renderer = renderer;
+    this.initStatsGL();
   }
 
   public update() {
@@ -69,5 +99,6 @@ export class Stats {
     this.deactivate();
     this.statsJS = null;
     this.statsGL = null;
+    this.renderer = null;
   }
 }

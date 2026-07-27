@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import * as THREE from "three/webgpu";
 import { Events } from "../lib";
 
 export type TimeEventArgs = {
@@ -23,8 +23,6 @@ export class Time extends THREE.Timer {
   private readonly maxDelta: number;
   private elapsed = 0;
   private running = false;
-  private animationFrameId: number | null = null;
-  private readonly onAnimationFrame = () => this.tick();
 
   constructor(options: TimeOptions = {}) {
     super();
@@ -45,22 +43,25 @@ export class Time extends THREE.Timer {
     return this.elapsed;
   }
 
+  /** Arms the clock. Call it right before the animation loop is wired up. */
   public start() {
     if (this.running) return;
     this.running = true;
     this.reset();
-    this.animationFrameId = requestAnimationFrame(this.onAnimationFrame);
   }
 
   public stop() {
     this.running = false;
-    if (this.animationFrameId !== null) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
-    }
   }
 
-  private tick() {
+  /**
+   * Advances one frame. Public because `Engine` drives it from the renderer's
+   * own animation loop rather than scheduling a second requestAnimationFrame:
+   * that loop already runs unconditionally once the backend is initialized, and
+   * calling from inside it puts the tick after `nodeFrame.update()` (which
+   * advances TSL's `time` / `deltaTime` nodes) and after `info.reset()`.
+   */
+  public tick() {
     if (!this.running) return;
 
     this.update();
@@ -73,8 +74,6 @@ export class Time extends THREE.Timer {
 
     this.elapsed += delta;
     this.events.trigger("tick", { elapsed: this.elapsed, delta });
-
-    this.animationFrameId = requestAnimationFrame(this.onAnimationFrame);
   }
 
   public destroy() {

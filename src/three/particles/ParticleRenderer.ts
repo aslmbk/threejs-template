@@ -1,11 +1,30 @@
-import * as THREE from "three";
+import * as THREE from "three/webgpu";
 import type { Particle } from "./Particle";
 
 type ParentParam = { parent: THREE.Object3D } | { scene: THREE.Object3D };
 
+/**
+ * The per-particle buffers, handed to the material factory so it can bind them
+ * as instanced attributes.
+ *
+ * - `position` is the particle centre in local space (vec3).
+ * - `data` is `(life, seed)` (vec2), where `life` is normalized to [0, 1] and
+ *   `seed` is the particle's stable random value.
+ */
+export type ParticleAttributes = {
+  position: THREE.InstancedBufferAttribute;
+  data: THREE.InstancedBufferAttribute;
+};
+
 export type ParticleRendererParams = ParentParam & {
   maxParticles: number;
-  material: THREE.Material;
+
+  /**
+   * Builds the material once the buffers exist. Taking a factory rather than a
+   * ready-made material is what lets the shader bind these exact attributes —
+   * see `createParticleMaterial`.
+   */
+  material: (attributes: ParticleAttributes) => THREE.Material;
 
   frustumCulled?: boolean;
 
@@ -15,28 +34,33 @@ export type ParticleRendererParams = ParentParam & {
 type ResolvedParams = {
   parent: THREE.Object3D;
   maxParticles: number;
-  material: THREE.Material;
   frustumCulled: boolean;
   disposeMaterial: boolean;
 };
 
+/**
+ * Draws a particle buffer as instanced sprites.
+ *
+ * Not `THREE.Points`: WebGPU only supports point primitives one pixel wide, so
+ * a point size is silently ignored there. An instanced `THREE.Sprite` is the
+ * supported way to get sized particles, and it behaves identically on the WebGL
+ * fallback.
+ */
 export class ParticleRenderer {
   private readonly params: ResolvedParams;
 
-  private readonly geometry = new THREE.BufferGeometry();
-  private readonly points: THREE.Points;
+  private readonly sprite: THREE.Sprite;
+  private readonly material: THREE.Material;
 
   private readonly positions: Float32Array;
   private readonly data: Float32Array;
 
-  private readonly positionAttribute: THREE.BufferAttribute;
-  private readonly dataAttribute: THREE.BufferAttribute;
+  public readonly attributes: ParticleAttributes;
 
   constructor(params: ParticleRendererParams) {
     this.params = {
       parent: "parent" in params ? params.parent : params.scene,
       maxParticles: params.maxParticles,
-      material: params.material,
       frustumCulled: params.frustumCulled ?? false,
       disposeMaterial: params.disposeMaterial ?? false,
     };
@@ -44,26 +68,34 @@ export class ParticleRenderer {
     this.positions = new Float32Array(this.params.maxParticles * 3);
     this.data = new Float32Array(this.params.maxParticles * 2);
 
-    // BufferAttribute keeps the array by reference. Float32BufferAttribute does
-    // `new Float32Array(array)` instead, i.e. it COPIES — every write below
-    // would land in a buffer the GPU never sees. Do not "simplify" this back.
-    this.positionAttribute = new THREE.BufferAttribute(this.positions, 3);
-    this.positionAttribute.setUsage(THREE.DynamicDrawUsage);
+    // InstancedBufferAttribute keeps the array by reference, and handing the
+    // attribute itself (rather than a raw array) to `instancedBufferAttribute()`
+    // makes the node hold on to this exact object — so the writes below, the
+    // update ranges and `needsUpdate` all reach the buffer the GPU reads. Give
+    // TSL a bare Float32Array instead and it wraps a *copy* in an interleaved
+    // buffer of its own. Do not "simplify" this.
+    this.attributes = {
+      position: new THREE.InstancedBufferAttribute(this.positions, 3),
+      data: new THREE.InstancedBufferAttribute(this.data, 2),
+    };
+    this.attributes.position.setUsage(THREE.DynamicDrawUsage);
+    this.attributes.data.setUsage(THREE.DynamicDrawUsage);
 
-    this.dataAttribute = new THREE.BufferAttribute(this.data, 2);
-    this.dataAttribute.setUsage(THREE.DynamicDrawUsage);
+    this.material = params.material(this.attributes);
 
-    this.geometry.setAttribute("position", this.positionAttribute);
-    this.geometry.setAttribute("data", this.dataAttribute);
-    this.geometry.setDrawRange(0, 0);
+    // Sprite's typing predates node materials and still asks for a
+    // SpriteMaterial. PointsNodeMaterial is the combination three documents for
+    // sized particles, and it is what makes the sprite honour `sizeNode`.
+    this.sprite = new THREE.Sprite(this.material as THREE.SpriteMaterial);
+    // Sprite.count is the instance count of the draw call.
+    this.sprite.count = 0;
+    this.sprite.frustumCulled = this.params.frustumCulled;
 
-    this.points = new THREE.Points(this.geometry, this.params.material);
-    this.points.frustumCulled = this.params.frustumCulled;
-    this.params.parent.add(this.points);
+    this.params.parent.add(this.sprite);
   }
 
-  public get object3d(): THREE.Points {
-    return this.points;
+  public get object3d(): THREE.Sprite {
+    return this.sprite;
   }
 
   public updateFromParticles(particles: ReadonlyArray<Particle>) {
@@ -85,24 +117,27 @@ export class ParticleRenderer {
     if (count > 0) {
       // Upload only the live prefix rather than the whole buffer. Ranges are
       // measured in array elements, and three clears them after each upload.
-      this.positionAttribute.clearUpdateRanges();
-      this.positionAttribute.addUpdateRange(0, count * 3);
-      this.positionAttribute.needsUpdate = true;
+      this.attributes.position.clearUpdateRanges();
+      this.attributes.position.addUpdateRange(0, count * 3);
+      this.attributes.position.needsUpdate = true;
 
-      this.dataAttribute.clearUpdateRanges();
-      this.dataAttribute.addUpdateRange(0, count * 2);
-      this.dataAttribute.needsUpdate = true;
+      this.attributes.data.clearUpdateRanges();
+      this.attributes.data.addUpdateRange(0, count * 2);
+      this.attributes.data.needsUpdate = true;
     }
 
-    this.geometry.setDrawRange(0, count);
+    this.sprite.count = count;
   }
 
+  /**
+   * The sprite's quad geometry is a module-level singleton shared by every
+   * sprite in three, so it is deliberately not disposed here — it is not ours.
+   */
   public dispose() {
-    this.params.parent.remove(this.points);
-    this.geometry.dispose();
+    this.params.parent.remove(this.sprite);
 
     if (this.params.disposeMaterial) {
-      this.params.material.dispose();
+      this.material.dispose();
     }
   }
 }
